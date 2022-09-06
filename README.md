@@ -1,8 +1,8 @@
-# my-package-name
+# GenRate React
 
 [![npm package][npm-img]][npm-url] [![Build Status][build-img]][build-url] [![Downloads][downloads-img]][downloads-url] [![Issues][issues-img]][issues-url] [![Code Coverage][codecov-img]][codecov-url] [![Commitizen Friendly][commitizen-img]][commitizen-url] [![Semantic Release][semantic-release-img]][semantic-release-url]
 
-> GenRate 
+> GenRate React package aims to organize, expand, more plexibility on building and coding web application 
 
 ## Install
 
@@ -15,11 +15,19 @@ npm install @genrate/react
 ```ts
 import { useGenRate } from '@genrate/react';
 
+
+/**
+ * Display Data
+ */
 const Display ({ email, password }) => (
   <Box>
     {email} {password}
   </Box>
 )
+
+/**
+ * Input Data
+ */
 
 const Template () => (
   <Box>
@@ -38,6 +46,9 @@ const Template () => (
 )
 
 
+/**
+ * Add Functionality
+ */
 interface Data {
   email: string,
   password: string;
@@ -47,21 +58,26 @@ export default function (props: Data) {
 
   const { view, model, pass } = useGenRate<Data>(props);
 
+  // render only once
+
   return view(SignIn, {
-    'TextField[name=email][required]': model('email'),
-    'TextField[name=password]': model('password'),
-    'Button[type=submit]': ({ email, password }) => ({
+    // Select components to manipulate
+    'TextField[name=email][required]': model('email'), // auto binding of input
+    'Box TextField[name=password]': model('password'), // auto binding of input
+
+    // retrieve and subscribe to data without rerendering 
+    'Button[type=submit]': ({ email, password }) => ({ 
       onClick: () => {
-        alert(`${email} ${password}`)
+        alert(`${email} ${password}`) 
       }
     }),
-    Display: pass('email', 'password')
+
+    // point out component that re render
+    Display: pass('email', 'password') 
   })
 }
 
-
 ```
-
 [build-img]: https://github.com/GenRate/genrate-react/actions/workflows/release.yml/badge.svg
 [build-url]: https://github.com/GenRate/genrate-react/actions/workflows/release.yml
 [downloads-img]: https://img.shields.io/npm/dt/@genrate/react
