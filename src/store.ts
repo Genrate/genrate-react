@@ -22,18 +22,35 @@ interface StoreEventMap {
 }
 
 export const store = {
-  data: {} as StoreMap,
+   data: {} as StoreMap,
+
+  init<D = StoreData>(id: string, props: D) {
+    if (props || !this.data[id]) {
+    
+      let initial = this.data[id] || {}
+      for (let k in props) {
+        if (k == 'gnode') continue;
+        initial = { ...initial, [k]: (props as any)[k] };
+      }
+  
+      this.data[id] = { ...initial };
+    }
+  },
 
   proxy(id: string, cb?: (prop: string) => void) {
 
     let handle = {
       get: (_t: any, prop: string) => {
         cb && cb(prop)
-        return this.data[id][prop]
+        return this.data[id][prop] || null
       },
     }
 
     return new Proxy(this.data[id], handle as any)
+  },
+
+  get(id: string, key: string) {
+    return this.data[id][key] || null;
   },
 
   set (id: string, key: string, value: any) {

@@ -19,7 +19,7 @@ import { useGenRate } from '@genrate/react';
 /**
  * Display Data
  */
-const Display ({ email, password }) => (
+const Output ({ email, password }) => (
   <Box>
     {email} {password}
   </Box>
@@ -28,8 +28,7 @@ const Display ({ email, password }) => (
 /**
  * Input Data
  */
-
-const Template () => (
+const SignIn () => (
   <Box>
     <Typography>
       Sign in 
@@ -37,6 +36,10 @@ const Template () => (
     <Box>
       <TextField required label="Email Address" name="email" />
       <TextField label="Password" type="password" id="password" />
+      <FormControlLabel
+        control={<Checkbox name="remember" value="remember" color="primary" />}
+        label="Remember me"
+      />
       <Button type="submit" >
         Sign In
       </Button>
@@ -56,14 +59,17 @@ interface Data {
 
 export default function (props: Data) {
 
-  const { view, model, pass } = useGenRate<Data>(props);
+  const { view, model, pass, attach } = useGenRate<Data>(props);
 
   // render only once
 
   return view(SignIn, {
     // Select components to manipulate
-    'TextField[name=email][required]': model('email'), // auto binding of input
+    'TextField[required]': model(props => props.name), // dynamic auto binding of input
     'Box TextField[name=password]': model('password'), // auto binding of input
+
+    // prop level model auto binding
+    'FormControlLabel[control]': model(['control', 'remember'], (e) => e.target.checked)
 
     // retrieve and subscribe to data without rerendering 
     'Button[type=submit]': ({ email, password }) => ({ 
@@ -72,7 +78,7 @@ export default function (props: Data) {
       }
     }),
 
-    // point out component that re render
+    // point out component that re render on data update
     Display: pass('email', 'password') 
   })
 }

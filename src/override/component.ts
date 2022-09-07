@@ -1,50 +1,78 @@
-import { ChangeEvent, cloneElement, createElement, ReactElement, useState } from "react";
-import { Custom, CustomModel, CustomRender, OverrideFn } from ".";
+import { cloneElement, createElement, isValidElement, ReactElement, ReactNode, useState } from "react";
+import { Custom, CustomModel, CustomAttach, OverrideFn, ModelKeyFn } from ".";
 import { useOverrideProps } from "../hooks/useOverrideProps";
 import { store } from "../store";
 
-interface OverrideProps<E,D> { 
+interface OverrideProps { 
   element: ReactElement, 
   children: ReactElement, 
-  override: OverrideFn<D>[], 
+  override: OverrideFn[], 
   storeId: string, 
-  custom: Custom<E,D> | [],
+  custom: Custom | [],
 }
 
-export function GenRateModel<E, D>(props: OverrideProps<E,D>) {
+export function GenRateModel(props: OverrideProps) {
   const { element, override, custom, storeId, children } = props;
 
   const [data, setData] = useState<string | number | boolean>('');
   const overrideProps = useOverrideProps(override, custom, storeId)
 
-  let modelProps = {};
+  let modelProps = {}, propModel, propKey: string | ModelKeyFn, propElement: ReactNode = null;
   if (custom && custom.length) {
-    let [,id, keyFn, valueFn, valueProp, keyProp] = custom as CustomModel<E>;
+    let [,id, keyFn, valueFn, valueProp, keyProp] = custom as CustomModel;
+
+    let key: string;
+    if (!Array.isArray(keyFn)) { 
+      key = keyFn({ ...element.props, ...overrideProps });
+    } else {
+      [propModel, propKey] = keyFn
+      propElement = element.props[propModel] as ReactElement;
+      key = typeof propKey == 'function' ? propKey(propElement.props) : propKey
+    }
+
     modelProps = {
-      [valueProp]: (e: E) => {
+      [keyProp]: (e: any) => {
         const value = valueFn(e);
         setData(value);
-        store.set(id, keyFn({ ...element.props, ...overrideProps }), value);
+        store.set(id, key as string, value);
       },
-      [keyProp]: data
+      [valueProp]: data
     }
   }
 
-  return cloneElement(element, {
-    ...overrideProps, ...modelProps
+  if (propModel) {
     
+    if (isValidElement(propElement)) {
+
+      return cloneElement(element, {
+        ...overrideProps, ...{
+          [propModel]: cloneElement(propElement, { 
+            ...(propElement.props || {}),
+            ...modelProps 
+          }, propElement.props && (propElement.props as any).children)
+        }
+      }, children)
+
+    }
+
+    modelProps = {};
+  }  
+
+  return cloneElement(element, {
+    ...overrideProps, 
+    ...modelProps
   }, children);
 }
 
-export function GenRateOverride<E, D>(props: OverrideProps<E,D>) {
+export function GenRateOverride(props: OverrideProps) {
 
   const { element, children, override, custom, storeId } = props;
   let overrideProps = useOverrideProps(override, custom, storeId);
 
   if (custom && custom.length) {
     const [type, ] = custom;
-    if (type == 'render') {
-      const [,node] = custom as CustomRender<D>;
+    if (type == 'attach') {
+      const [,node] = custom as CustomAttach;
       return createElement(node.type, { ...overrideProps, gnode: element })
     }
   }
