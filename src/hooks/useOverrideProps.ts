@@ -7,28 +7,38 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
   const [,forceUpdate] = useReducer(x => x + 1, 0);
 
   const storeKeys: string[] = [];
+  let exceptKeys: string[] = [];
+  let newKeySub = false;
 
   let overrideProps = {};
 
   if (custom && custom.length) {
     let [type, ] = custom;
-    let fields: string[] = [];
+    let keys: string[] = [];
     if (type == 'pass') {
-      [,fields] = custom as CustomPass;
+      let [,fields, except] = custom as CustomPass;
+      if (typeof fields == 'boolean') {
+        exceptKeys = except;
+        newKeySub = fields;
+        keys = Object.keys(store.data[storeId])
+                     .filter(f => except.indexOf(f) < 0);
+      } else {
+        keys = fields;
+      }
       
     } else if (type == 'attach') {
       let [,,props] = custom as CustomAttach;
 
       if (Array.isArray(props)) {
-        fields = props as string[];
+        keys = props as string[];
       } else if (typeof props == 'function'){
         if (!override) override = [];
         override.push(props)
       }      
     }
 
-    if (fields && fields.length) {
-      for (let k of fields) {
+    if (keys && keys.length) {
+      for (let k of keys) {
         overrideProps = { ...overrideProps, [k]: store.get(storeId, k) }
         storeKeys.push(k)
       }
@@ -43,6 +53,15 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
   }
 
   useEffect(() => {
+
+    if (!storeKeys || !storeKeys.length) return;
+
+    if (newKeySub) {
+      store.subscribe(storeId, ':new-key', (key) => {
+        return (exceptKeys.indexOf(key) < 0) && forceUpdate()
+      })
+    }
+
     const subs = storeKeys && storeKeys.map(key => 
       store.subscribe(storeId, key, () => forceUpdate())
     )
@@ -50,7 +69,7 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
     return () => {
       subs && subs.map(sub => sub.unsubscribed())
     }
-  }, [])
+  }, [storeKeys.length])
 
-  return overrideProps
+  return overrideProps as { [key: string ]: any}
 }

@@ -54,6 +54,11 @@ export const store = {
   },
 
   set (id: string, key: string, value: any) {
+
+    if (!(this.data[id] as Object).hasOwnProperty(key)) {
+      this.emit(id, ':new-key', key)
+    }
+
     this.data[id][key] = value;
     this.emit(id, key, value);
   },

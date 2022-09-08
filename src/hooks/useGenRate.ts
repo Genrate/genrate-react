@@ -2,6 +2,7 @@ import { ChangeEvent, ReactNode, useEffect, useId, useState } from "react";
 import { store, Subscription } from '../store';
 import { CustomModel, CustomPass, CustomAttach, override, Overrides, ModelKey, ModelKeyFn, ModelValueFn } from "../override";
 
+
 export function useGenRate<Data>(props: Data) {
 
   const id = useId();
@@ -40,11 +41,27 @@ export function useGenRate<Data>(props: Data) {
     return ['model', id, keyFn, valueFn, valueProp, keyProp] as CustomModel;
   }
 
-  function pass(...fields: (keyof Data)[]) {
-    return ['pass', fields] as CustomPass;
+  function pass(all: true): CustomPass;
+  function pass(all: true, except: (keyof Data)[]): CustomPass;
+  function pass(...fields: (keyof Data)[]): CustomPass;
+  function pass(...fields: (keyof Data)[] | [true, (keyof Data)[]?]): CustomPass {
+
+    if (!fields || !fields.length) throw Error('No data specified to pass on')
+
+    let keys: CustomPass[1] = fields as string[]; 
+    let except: CustomPass[2] = [];
+    if (fields[0] === true) {
+      keys = fields[0];
+      except = (fields[1] || []) as string[]
+    }
+
+    return ['pass', keys, except];
   }
 
-  function attach(element: ReactNode | ((props: any) => ReactNode), props: (keyof Data)[] | ((data: Data) => ({ [key: string]: any }))) {
+  function attach(
+    element: ReactNode | ((props: any) => ReactNode), 
+    props: (keyof Data)[] | ((data: Data) => ({ [key: string]: any }))
+  ) {
     return ['attach', element, props] as CustomAttach
   }
 

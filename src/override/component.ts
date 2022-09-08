@@ -73,9 +73,28 @@ export function GenRateOverride(props: OverrideProps) {
     const [type, ] = custom;
     if (type == 'attach') {
       const [,node] = custom as CustomAttach;
-      return createElement(node.type, { ...overrideProps, gnode: element })
+      if (isValidElement(node)) {
+        if (typeof node.type == 'function') {
+          return (node.type as Function)({ ...overrideProps, gnode: element })
+        }
+
+        return createElement(node.type, { ...overrideProps, gnode: element })
+      } else {
+        console.warn('Invalid attach element', node)
+      }
     }
   }
+
+  if (typeof element.type == 'function') {
+    return (element.type as Function)(
+      new Proxy(overrideProps, {
+        get(target, p: string) {
+          return target && target[p] || null
+        },
+      })
+    )
+  }
+
 
   return cloneElement(element, overrideProps, children)
 }

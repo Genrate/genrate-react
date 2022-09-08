@@ -1,7 +1,7 @@
 {
   "name": "@genrate/react",
-  "version": "1.0.3",
-  "description": "A template for creating npm packages using TypeScript and VSCode",
+  "version": "1.0.4",
+  "description": "React tools to organize resource and add more plexibility in coding and building react apps",
   "main": "./lib/src/index.js",
   "types": "./lib/src/index.d.ts",
   "files": [

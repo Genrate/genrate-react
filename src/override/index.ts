@@ -15,7 +15,7 @@ export type ModelValueFn<E = ChangeEvent<HTMLInputElement>> = (e: E) => string |
 type DataKeyFn = string[] | ((data: KeyValue) => KeyValue)
 
 export type CustomModel = ['model', string, [string, ModelKeyFn] | ModelKeyFn, ModelValueFn, string, string]
-export type CustomPass = ['pass', string[]]
+export type CustomPass = ['pass', string[] | true, string[]]
 export type CustomAttach = ['attach', ReactElement, DataKeyFn]
 
 export type Custom = CustomModel | CustomPass | CustomAttach

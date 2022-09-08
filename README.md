@@ -12,10 +12,8 @@ npm install @genrate/react
 
 ## Usage
 
+### Design
 ```ts
-import { useGenRate } from '@genrate/react';
-
-
 /**
  * Display Data
  */
@@ -43,15 +41,17 @@ const SignIn () => (
       <Button type="submit" >
         Sign In
       </Button>
-      <Display />
     </Box>
+    <Output />
   </Box>
 )
 
+```
+### Add Functionality
 
-/**
- * Add Functionality
- */
+```ts
+import { useGenRate } from '@genrate/react';
+
 interface Data {
   email: string,
   password: string;
@@ -79,7 +79,7 @@ export default function (props: Data) {
     }),
 
     // point out component that re render on data update
-    Display: pass('email', 'password') 
+    Output: pass('email', 'password') 
   })
 }
 
