@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import { Custom, CustomPass, CustomAttach, OverrideFn } from "../override";
 import { store } from "../store";
 
@@ -69,7 +69,7 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
     return () => {
       subs && subs.map(sub => sub.unsubscribed())
     }
-  }, [storeKeys.length])
+  }, [])
 
   return overrideProps as { [key: string ]: any}
 }

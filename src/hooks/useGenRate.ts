@@ -1,15 +1,14 @@
-import { ChangeEvent, ReactNode, useEffect, useId, useState } from "react";
+import { ReactNode, useEffect, useId, useState } from "react";
 import { store, Subscription } from '../store';
 import { CustomModel, CustomPass, CustomAttach, override, Overrides, ModelKey, ModelKeyFn, ModelValueFn } from "../override";
 
-
-export function useGenRate<Data>(props: Data) {
+export function useGenRate<Data = any>(data?: Data) {
 
   const id = useId();
 
-  store.init<Data>(id, props);
+  store.init<Data>(id, data || {} as Data);
 
-  const [state, setState] = useState<Data | undefined>(props)
+  const [state, setState] = useState<Data | undefined>(data)
 
   let keys: string[] = [];
 
@@ -58,23 +57,22 @@ export function useGenRate<Data>(props: Data) {
     return ['pass', keys, except];
   }
 
-  function attach(
-    element: ReactNode | ((props: any) => ReactNode), 
-    props: (keyof Data)[] | ((data: Data) => ({ [key: string]: any }))
+  function attach<F extends (props: any) => ReactNode>(
+    component: F, 
+    pass?: (keyof Data)[] | ((data: Data) => Parameters<F>[0])
   ) {
-    return ['attach', element, props] as CustomAttach
+    return ['attach', component, pass] as CustomAttach
   }
 
-  function view(template: ((data: Data) => ReactNode) | ReactNode, selectors: Overrides<Data>) {
+  function view(template: (data: Data) => ReactNode, selectors: Overrides<Data>) {
 
-    if ((props as any).gnode && 
-        (props as any).gnode.type &&
-        typeof (props as any).gnode.type == 'function') {
-      template = (props as any).gnode.type;
+    if (data && (data as any).gcomponent &&
+        typeof (data as any).gcomponent == 'function') {
+      template = (data as any).gcomponent;
     }
 
     const proxy = store.proxy(id, (prop) => keys.push(prop as string))
-    const node = typeof template == 'function' ? template(proxy as Data) : template;
+    const node = template(proxy as Data);
 
     return override(node, selectors as Overrides<any>, id);
   }

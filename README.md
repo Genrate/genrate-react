@@ -15,18 +15,24 @@ npm install @genrate/react
 ### Design
 ```ts
 /**
- * Display Data
+ * Output
  */
-const Output ({ email, password }) => (
-  <Box>
+const Output ({  
+  // overriden test data
+  user = {
+    email: 'test@test.com', 
+    password: 'passsword'
+  }
+}) => (
+  user && <Box>
     {email} {password}
   </Box>
 )
 
 /**
- * Input Data
+ * Input
  */
-const SignIn () => (
+const Input () => (
   <Box>
     <Typography>
       Sign in 
@@ -46,6 +52,22 @@ const SignIn () => (
   </Box>
 )
 
+/**
+ * Layout
+ */
+export const Main = () => (
+  <Box>
+    <Avatar>
+      <LockOutlinedIcon />
+    </Avatar>
+    <Typography component="h1" variant="h5">
+      Sign in
+    </Typography>
+    <Input />
+    <Output />
+  </Box>
+)
+
 ```
 ### Add Functionality
 
@@ -57,29 +79,52 @@ interface Data {
   password: string;
 }
 
-export default function (props: Data) {
+/**
+ * Input Component
+ */
+export const SignIn = (
+  onSubmit = (data: Data) => console.log('test', data)
+) => {
 
-  const { view, model, pass, attach } = useGenRate<Data>(props);
+  const { view, model, pass, attach } = useGenRate<Data>();
 
   // render only once
 
-  return view(SignIn, {
-    // Select components to manipulate
+  return view(Input, {
+    // Select components to manipulate 
     'TextField[required]': model(props => props.name), // dynamic auto binding of input
     'Box TextField[name=password]': model('password'), // auto binding of input
 
     // prop level model auto binding
     'FormControlLabel[control]': model(['control', 'remember'], (e) => e.target.checked)
 
-    // retrieve and subscribe to data without rerendering 
-    'Button[type=submit]': ({ email, password }) => ({ 
+    // Add on click event to button
+    'Button[type=submit]':
+    // subscribe to specific data
+    ({ email, password }) => ({ 
       onClick: () => {
-        alert(`${email} ${password}`) 
+        onSubmit({ email, password, remember })
       }
     }),
+  })
+}
 
-    // point out component that re render on data update
-    Output: pass('email', 'password') 
+/**
+ * Main Component
+ */
+export default function () {
+  const { view, attach, set, pass } = useGenRate()
+
+  return view(Main, {
+    // Attach othe component and set prop 
+    Input: attach(SignIn, () => ({ 
+            onSubmit: (data) => {
+              // receive data from other component
+              set('user', data)
+            } 
+          })),
+    // pass data to other component 
+    Test: pass('user')
   })
 }
 

@@ -1,9 +1,44 @@
+import { ReactElement } from "react"
+import { Custom, ModelValueFn, OverrideFn } from "./override"
+import { ElementType } from "./override/component"
+
 interface StoreData {
   [key: string]: any
 }
 
 interface StoreMap {
   [key: string]: StoreData
+}
+
+export interface OverrideModel { 
+  id: string,
+  key: string,
+  prop?: {
+    element: ReactElement
+    key: string
+  },
+  valueFn: ModelValueFn,
+  keyProp: string;
+  valueProp: string;
+}
+
+export interface OverrideData {
+  node: {
+    type: ElementType,
+    props: any,
+  };
+  children: ReactElement;
+  override: OverrideFn[]; 
+  custom: Custom | [];
+  model?: OverrideModel
+}
+
+interface StoreOverride {
+  [key: string]: OverrideData
+}
+
+interface StoreOverrideMap {
+  [key: string]: StoreOverride
 }
 
 type Listener = (value: any) => void
@@ -29,7 +64,7 @@ export const store = {
     
       let initial = this.data[id] || {}
       for (let k in props) {
-        if (k == 'gnode') continue;
+        if (k == 'gtype') continue;
         initial = { ...initial, [k]: (props as any)[k] };
       }
   
@@ -39,14 +74,12 @@ export const store = {
 
   proxy(id: string, cb?: (prop: string) => void) {
 
-    let handle = {
+    return new Proxy(this.data[id], {
       get: (_t: any, prop: string) => {
         cb && cb(prop)
         return this.data[id][prop] || null
       },
-    }
-
-    return new Proxy(this.data[id], handle as any)
+    })
   },
 
   get(id: string, key: string) {
@@ -65,6 +98,21 @@ export const store = {
   del (id: string) {
     delete this.data[id];
     delete this.events[id];
+    delete this.override[id];
+  },
+
+
+  override: {} as StoreOverrideMap,
+  setOverride(id: string, key: string, data: OverrideData) {
+    if (!this.override[id]) {
+      this.override[id] = {};
+    }
+
+    this.override[id][key] = data;
+  },
+
+  getOverride(id: string, key: string) {
+    return this.override[id] && this.override[id][key];
   },
 
   events: {} as StoreEventMap,

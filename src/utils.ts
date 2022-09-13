@@ -5,7 +5,7 @@ const REGEXP_ID = `(?:\\\\[\\da-fA-F]{1,6}${REGEXP_WS}?|\\\\[^\\r\\n\\f]|[\\w-]|
 const REGEXP_ATTR = `\\[${REGEXP_WS}*(${REGEXP_ID})(?:${REGEXP_WS}*([*^$|!~]?=)${REGEXP_WS}` + 
                     `*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|(${REGEXP_ID}))|)${REGEXP_WS}*\\]`;
 
-export type Attrs = { [key: string]: (string | boolean)[] }
+export type Attrs = { [key: string]: [string, string] | boolean }
 
 export type Node = ReactNode & { type?: { name: string, render: { name: string }, type: { render: { name: string, displayName: string }}}}
 
@@ -38,7 +38,7 @@ export function extract_attributes(selector: string) {
 
       if (attrMatch && attrMatch.length) {
         selector = selector.replace(attrMatch[0], '');
-        attrs[attrMatch[1]] = [attrMatch[2], attrMatch[5]] || true
+        attrs[attrMatch[1]] = attrMatch[5] ? [attrMatch[2], attrMatch[5]] : true
         continue;
       }
     }
@@ -60,19 +60,37 @@ export function map_selector(selector: string, cb: (level: string) => void) {
   }
 }
 
-export function match_attrs(attrs: Attrs, props: { [key: string]: string | boolean }) {
+export function str_exact_contains(str: string, match: string) {
+  return new RegExp(`(^|[^A-Za-z])${match}([^A-Za-z]|$)`, 'g').test(str)
+}
+
+export function match_attrs(attrs: Attrs, props: { [key: string]: string }) {
   
   for (let a in attrs) {
 
-    let [op, val] = attrs[a];
+    if (attrs[a] === true) {
+      if (!props[a]) return false;
+      continue;
+    }
+
+    let [op, val] = attrs[a] as [string, string];
+
+    if (op && ['=', '~=', '*=', '^=', '$='].indexOf(op) < 0) {
+      console.warn(`Invalid attribute operator "${op}"`)
+      return false;
+    }
+
+    if (val && props[a] && typeof props[a] != 'string' && typeof props[a] != 'number') {
+      return false;
+    }
 
     if (
-      (!val && !props[a]) ||
-      (op == '=' && val != props[a]) ||
-      (op == '~=' && props[a] && val && !new RegExp(`(^|[^A-Za-z])${val}([^A-Za-z]|$)`, 'g').test(props[a] as string)) ||
-      (op == '*=' && props[a] && val && typeof val == 'string' && (props[a] as string).indexOf(val) < 0) ||
-      (op == '^=' && props[a] && val && typeof val == 'string' && (props[a] as string).startsWith(val)) ||
-      (op == '$=' && props[a] && val && typeof val == 'string' && (props[a] as string).endsWith(val))
+      (!val && props[a] == undefined) ||
+      (op == '=' && (!props[a] || props[a] != val)) ||
+      (op == '~=' && (!props[a] || !str_exact_contains(props[a], val))) ||
+      (op == '*=' && (!props[a] || (`${props[a]}`).indexOf(val) < 0)) ||
+      (op == '^=' && (!props[a] || (`${props[a]}`).startsWith(val))) ||
+      (op == '$=' && (!props[a] || (`${props[a]}`).endsWith(val)))
     ) {
       return false;
     }

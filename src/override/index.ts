@@ -1,7 +1,10 @@
-import { ChangeEvent, cloneElement, createElement, isValidElement, ReactElement, ReactNode } from "react";
+import { ChangeEvent, isValidElement, JSXElementConstructor, ReactElement, ReactNode } from "react";
 import { get_tag_name, Node } from "../utils";
-import { GenRateModel, GenRateOverride } from "./component";
+import { ElementType, genrate, rebuild } from "./component";
 import { matcher } from "./selector";
+import { OverrideData, OverrideModel, store } from "../store";
+
+import md5 from 'md5';
 
 type Matcher = ReturnType<typeof matcher>;
 
@@ -16,7 +19,7 @@ type DataKeyFn = string[] | ((data: KeyValue) => KeyValue)
 
 export type CustomModel = ['model', string, [string, ModelKeyFn] | ModelKeyFn, ModelValueFn, string, string]
 export type CustomPass = ['pass', string[] | true, string[]]
-export type CustomAttach = ['attach', ReactElement, DataKeyFn]
+export type CustomAttach = ['attach', (props: any) => ReactElement, DataKeyFn]
 
 export type Custom = CustomModel | CustomPass | CustomAttach
 
@@ -27,6 +30,40 @@ export interface Overrides<D> {
 }
 
 type MapElementCB = (overrides: string[]) => [ReactNode, OverrideFn[], Custom | [], string]
+
+
+function get_override_model(node: ReactElement, custom: CustomModel) {
+  let model: OverrideModel = { 
+    id: '', 
+    key: '', 
+    valueFn: custom[3], 
+    valueProp: custom[4], 
+    keyProp: custom[5] 
+  }
+
+  const keyFn = custom[2];
+
+  if (!Array.isArray(keyFn)) { 
+    model.key = keyFn({ ...node.props });
+    model.id = model.key;
+  } else {
+    let propKey;
+    [model.key, propKey] = keyFn
+
+    if (isValidElement(node.props[model.key])) {
+      model.prop = {
+        element: node.props[model.key],
+        key: typeof propKey == 'function' 
+          ? propKey(node.props[model.key].props) 
+          : propKey
+      }
+
+      model.id = model.prop.key;
+    }
+  }
+
+  return model;
+}
 
 function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index: string = '0'): ReactNode {
   
@@ -59,21 +96,31 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index:
     
     if (Object.keys(overrideFns).length || custom.length) {
 
-      const props = {
-        key: index, 
+      const data: OverrideData = {
+        node: {
+          type: node.type,
+          props: node.props, 
+        },
+        children, 
         override: overrideFns, 
-        custom, storeId,
-        element: (overrideNode || node) as ReactElement, 
-        children 
+        custom,
       }
 
-      if (custom.length && custom[0] == 'model') {
-        return createElement(GenRateModel, props)
-      }
+      const isModel = (custom.length && custom[0] == 'model') || false;
+      let model = isModel ? get_override_model(node, custom as CustomModel) : null;
 
-      return createElement(GenRateOverride, props)
+      if (model) data.model = model;
+
+      const overrideId = md5(`${result.join('|')}${model && model.id}`);
+      store.setOverride(storeId, overrideId, data);      
+
+      return genrate({ key: index, id: overrideId, storeId }, isModel)
     } else if (children != node.props.children) {
-      return cloneElement(node, { key: index }, children)
+      return rebuild(
+        node.type as JSXElementConstructor<any>, 
+        { ...node.props, key: index }, 
+        children
+      )
     }
   }
 
@@ -113,8 +160,10 @@ function apply_overrides(overrides: Override[], id: string): [ReactNode, Overrid
 
 
 export function override(node: ReactNode, overrides: Overrides<KeyValue>, id: string) {
-  
-  return map_element(node, matcher(Object.keys(overrides)), 
+  let selectors = Object.keys(overrides);
+  return map_element(
+    node, 
+    matcher(selectors), 
     (o) => apply_overrides(o.map((m: string) => overrides[m]), id)
   );
 }
