@@ -2,13 +2,14 @@ import { ReactNode, useEffect, useId, useState } from "react";
 import { store, Subscription } from '../store';
 import { CustomModel, CustomPass, CustomAttach, override, Overrides, ModelKey, ModelKeyFn, ModelValueFn } from "../override";
 
-export function useGenRate<Data = any>(data?: Data) {
-
+type KeyValue = { [key: string]: any };
+export function useGenRate<Data extends KeyValue>(data?: Data) {
+  
   const id = useId();
 
-  store.init<Data>(id, data || {} as Data);
+  store.init<Data>(id, (data || {}) as Data);
 
-  const [state, setState] = useState<Data | undefined>(data)
+  const [state, setState] = useState(data as Data)
 
   let keys: string[] = [];
 
@@ -26,17 +27,23 @@ export function useGenRate<Data = any>(data?: Data) {
     };
   }, [])
 
-  function set(key: string, value: any) {
-    store.set(id, key, value)
+  function set(key: keyof Data, value: Data[typeof key]) {
+    store.set(id, key as string, value)
   }
 
   function model(
-    key: ModelKey | ModelKeyFn, 
+    key: ModelKey | ModelKeyFn = (p) => p.name, 
     valueFn: ModelValueFn = (e) => e.target.value,
     valueProp = 'value',
     keyProp = 'onChange',
   ) {
+
     const keyFn = typeof key != 'string' ? key : () => key
+
+    if (Array.isArray(keyFn) && keyFn.length == 1) {
+      keyFn.push((p) => p.name);
+    }
+
     return ['model', id, keyFn, valueFn, valueProp, keyProp] as CustomModel;
   }
 
@@ -59,12 +66,17 @@ export function useGenRate<Data = any>(data?: Data) {
 
   function attach<F extends (props: any) => ReactNode>(
     component: F, 
-    pass?: (keyof Data)[] | ((data: Data) => Parameters<F>[0])
+    pass?: (keyof Data)[] | Parameters<F>[0] | ((data: Data) => Parameters<F>[0])
   ) {
+    if (['function', 'array'].indexOf(typeof pass) < 0) {
+      const res = { ...pass };
+      pass = () => res;
+    }
+
     return ['attach', component, pass] as CustomAttach
   }
 
-  function view(template: (data: Data) => ReactNode, selectors: Overrides<Data>) {
+  function view(template: (data: any) => ReactNode, selectors: Overrides<Data>) {
 
     if (data && (data as any).gcomponent &&
         typeof (data as any).gcomponent == 'function') {
@@ -72,7 +84,7 @@ export function useGenRate<Data = any>(data?: Data) {
     }
 
     const proxy = store.proxy(id, (prop) => keys.push(prop as string))
-    const node = template(proxy as Data);
+    const node = template(proxy);
 
     return override(node, selectors as Overrides<any>, id);
   }

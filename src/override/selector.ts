@@ -56,7 +56,7 @@ export function matcher(selectors: string[], parent?: TagMap, child: TagMap = {}
             parent[selectorTag][selector].next.push({ tag, attrs })
           }
 
-          Matcher.cache[selector] = parent[tag][selector]
+          Matcher.cache[selector] = parent[selectorTag][selector]
         }
       })
 

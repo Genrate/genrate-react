@@ -1,6 +1,6 @@
 {
   "name": "@genrate/react",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "React tools to organize resource and add more plexibility in coding and building react apps",
   "main": "./lib/src/index.js",
   "types": "./lib/src/index.d.ts",
@@ -81,6 +81,8 @@
     "@semantic-release/github": "^8.0.4",
     "@semantic-release/npm": "^9.0.1",
     "@semantic-release/release-notes-generator": "^10.0.3",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
     "@types/jest": "^27.4.1",
     "@types/md5": "^2.3.2",
     "@types/node": "^16.11.27",

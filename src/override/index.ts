@@ -12,7 +12,7 @@ type KeyValue = { [key: string]: any };
 
 export type OverrideFn<D = KeyValue> = (data: D) => KeyValue;
 
-export type ModelKey = string | [string, ModelKeyFn]
+export type ModelKey = string | [string, ModelKeyFn?]
 export type ModelKeyFn = ((p: KeyValue) => string)
 export type ModelValueFn<E = ChangeEvent<HTMLInputElement>> = (e: E) => string | number | boolean;
 type DataKeyFn = string[] | ((data: KeyValue) => KeyValue)
@@ -113,7 +113,6 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index:
 
       const overrideId = md5(`${result.join('|')}${model && model.id}`);
       store.setOverride(storeId, overrideId, data);      
-
       return genrate({ key: index, id: overrideId, storeId }, isModel)
     } else if (children != node.props.children) {
       return rebuild(

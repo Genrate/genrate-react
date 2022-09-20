@@ -92,11 +92,11 @@ export const SignIn = (
 
   return view(Input, {
     // Select components to manipulate 
-    'TextField[required]': model(props => props.name), // dynamic auto binding of input
+    'TextField[required]': model(), // dynamic auto binding of input
     'Box TextField[name=password]': model('password'), // auto binding of input
 
     // prop level model auto binding
-    'FormControlLabel[control]': model(['control', 'remember'], (e) => e.target.checked)
+    'FormControlLabel[control]': model(['control'], (e) => e.target.checked)
 
     // Add on click event to button
     'Button[type=submit]':
@@ -117,12 +117,10 @@ export default function () {
 
   return view(Main, {
     // Attach othe component and set prop 
-    Input: attach(SignIn, () => ({ 
-            onSubmit: (data) => {
-              // receive data from other component
-              set('user', data)
-            } 
-          })),
+    Input: attach(SignIn, { 
+            // receive data from other component
+            onSubmit: (data) => set('user', data)
+          }),
     // pass data to other component 
     Test: pass('user')
   })

@@ -10,7 +10,9 @@ export type Attrs = { [key: string]: [string, string] | boolean }
 export type Node = ReactNode & { type?: { name: string, render: { name: string }, type: { render: { name: string, displayName: string }}}}
 
 export function get_tag_name(node: Node) {
-  return node && node.type && ((
+  return node && node.type && (( 
+          typeof node.type == 'string' && node.type
+        ) || (
           node.type.name 
         ) || (
           node.type.render && 
@@ -35,7 +37,6 @@ export function extract_attributes(selector: string) {
 
     if (selector && selector.length) {
       let attrMatch = selector.match(new RegExp(`^${REGEXP_ATTR}`));
-
       if (attrMatch && attrMatch.length) {
         selector = selector.replace(attrMatch[0], '');
         attrs[attrMatch[1]] = attrMatch[5] ? [attrMatch[2], attrMatch[5]] : true
@@ -74,11 +75,6 @@ export function match_attrs(attrs: Attrs, props: { [key: string]: string }) {
     }
 
     let [op, val] = attrs[a] as [string, string];
-
-    if (op && ['=', '~=', '*=', '^=', '$='].indexOf(op) < 0) {
-      console.warn(`Invalid attribute operator "${op}"`)
-      return false;
-    }
 
     if (val && props[a] && typeof props[a] != 'string' && typeof props[a] != 'number') {
       return false;
