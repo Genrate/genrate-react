@@ -135,8 +135,8 @@ export default function () {
 [npm-url]: https://www.npmjs.com/package/@genrate/react
 [issues-img]: https://img.shields.io/github/issues/GenRate/genrate-react
 [issues-url]: https://github.com/GenRate/genrate-react/issues
-[codecov-img]: https://codecov.io/gh/GenRate/genrate-react/branch/main/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/GenRate/genrate-react
+[codecov-img]: https://app.codecov.io/gh/GenRate/genrate-react/branch/main/graph/badge.svg
+[codecov-url]: https://app.codecov.io/gh/GenRate/genrate-react
 [semantic-release-img]: https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg
 [semantic-release-url]: https://github.com/semantic-release/semantic-release
 [commitizen-img]: https://img.shields.io/badge/commitizen-friendly-brightgreen.svg
