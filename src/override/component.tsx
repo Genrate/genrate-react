@@ -1,9 +1,10 @@
 import React, { JSXElementConstructor, useState } from "react";
-import { CustomAttach } from ".";
+import { CustomAttach, CustomQuery, KeyValue, Queries } from ".";
+import { useGenRate } from "../hooks/useGenRate";
 import { useOverrideProps } from "../hooks/useOverrideProps";
 import { store } from "../store";
 
-export type ElementType = string | JSXElementConstructor<any>
+export type ElementType = string | JSXElementConstructor<any> | ((p: any) => JSX.Element)
 
 interface OverrideProps { 
   id: string;
@@ -33,15 +34,11 @@ export const GenRateModel = React.memo((props: OverrideProps) => {
     }
   }
 
-  if (model && model.prop) {
-    if (model.prop.element) {
-      const PComponent = model.prop.element.type;
-      const PProps = { ...model.prop.element.props, ...modelProps };
+  if (model && model.prop && model.prop.element) {
+    const PComponent = model.prop.element.type;
+    const PProps = { ...model.prop.element.props, ...modelProps };
 
-      modelProps = { [model.key]: <PComponent {...PProps} /> }
-    } else {
-      modelProps = {};
-    }
+    modelProps = { [model.key]: <PComponent {...PProps} /> }
   }  
   
   const EComponent = node.type;
@@ -50,6 +47,19 @@ export const GenRateModel = React.memo((props: OverrideProps) => {
   return (
     <EComponent {...EProps}>{children}</EComponent>
   )
+})
+
+interface GenRateQueryProps { 
+  node: (p: any) => JSX.Element, 
+  queries: Queries<KeyValue>, 
+  data: KeyValue, 
+  storeId: string 
+}
+
+export const GenRateQuery = React.memo((props: GenRateQueryProps) => {
+  const { node, queries, data, storeId } = props;
+  const { view } = useGenRate(data, storeId);
+  return view(node, queries)
 })
 
 export const GenRateOverride = React.memo((props: OverrideProps) => {
@@ -61,29 +71,43 @@ export const GenRateOverride = React.memo((props: OverrideProps) => {
 
   const EComponent = node.type;
 
-  let proxy = new Proxy(overrideProps, {
+  const EProps = { ...node.props, ...overrideProps }
+
+  let proxy = new Proxy(EProps, {
     get(target, p: string) {
       return target && target[p] || null
     },
   })
 
+  let queries: Queries<KeyValue> | undefined = undefined;
+  let queryStoreId: string = '';
   if (custom && custom.length) {
     const [type, ] = custom;
     if (type == 'attach') {
-      const [,componentFn] = custom as CustomAttach;
+      const [,,componentFn] = custom as CustomAttach;
       if (typeof componentFn == 'function') {
         return (componentFn as Function)(proxy)
       } else {
         console.warn('Invalid attach component', componentFn)
       }
+    } else if (type == 'query') {
+      [,queryStoreId,queries] = custom;
     }
   }
 
   if (typeof EComponent == 'function') {
+
+    if (queries) {
+      const QProps = {
+        node: EComponent as (p: any) => JSX.Element, 
+        queries, data: proxy, storeId: queryStoreId
+      }
+
+      return <GenRateQuery {...QProps} />
+    }
+
     return (EComponent as Function)(proxy);
   }
-
-  const EProps = { ...node.props, ...overrideProps }
 
   return (
     <EComponent {...EProps} >{children}</EComponent>

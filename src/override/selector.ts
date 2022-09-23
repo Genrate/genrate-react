@@ -19,10 +19,9 @@ const Matcher = {
   cache: {} as SelectorMap
 }
 
-export function matcher(selectors: string[], parent?: TagMap, child: TagMap = {}) {
+export function matcher(selectors: string[], parent: TagMap = {}, child: TagMap = {}) {
 
-  if (!parent) {
-    parent = {};
+  if (!Object.keys(parent).length) {
     for (let selector of selectors) {
 
       if (Matcher.cache[selector]) {
@@ -70,8 +69,8 @@ export function matcher(selectors: string[], parent?: TagMap, child: TagMap = {}
       let result: string[] = [
         ...this.checkTag(child[name], props),
         ...this.checkTag(child['*'], props),
-        ...this.checkTag((parent || {})[name], props),
-        ...this.checkTag((parent || {})['*'], props),
+        ...this.checkTag((parent)[name], props),
+        ...this.checkTag((parent)['*'], props),
       ]
       
       return result;

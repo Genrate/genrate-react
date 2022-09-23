@@ -1,6 +1,6 @@
 import { ChangeEvent, isValidElement, JSXElementConstructor, ReactElement, ReactNode } from "react";
 import { get_tag_name, Node } from "../utils";
-import { ElementType, genrate, rebuild } from "./component";
+import { genrate, rebuild } from "./component";
 import { matcher } from "./selector";
 import { OverrideData, OverrideModel, store } from "../store";
 
@@ -8,7 +8,7 @@ import md5 from 'md5';
 
 type Matcher = ReturnType<typeof matcher>;
 
-type KeyValue = { [key: string]: any };
+export type KeyValue = { [key: string]: any };
 
 export type OverrideFn<D = KeyValue> = (data: D) => KeyValue;
 
@@ -18,18 +18,19 @@ export type ModelValueFn<E = ChangeEvent<HTMLInputElement>> = (e: E) => string |
 type DataKeyFn = string[] | ((data: KeyValue) => KeyValue)
 
 export type CustomModel = ['model', string, [string, ModelKeyFn] | ModelKeyFn, ModelValueFn, string, string]
-export type CustomPass = ['pass', string[] | true, string[]]
-export type CustomAttach = ['attach', (props: any) => ReactElement, DataKeyFn]
+export type CustomPass = ['pass', string, string[] | true, string[]]
+export type CustomAttach = ['attach', string, (props: any) => ReactElement, DataKeyFn]
+export type CustomQuery = ['query', string, Queries<KeyValue>]
 
-export type Custom = CustomModel | CustomPass | CustomAttach
+export type Custom = CustomModel | CustomPass | CustomAttach | CustomQuery
 
 type Override<D = KeyValue> = OverrideFn<D> | ReactNode | Custom
 
-export interface Overrides<D> {
+export interface Queries<D> {
   [key: string]: Override<D>
 }
 
-type MapElementCB = (overrides: string[]) => [ReactNode, OverrideFn[], Custom | [], string]
+type MapElementCB = (overrides: string[]) => [ReactElement | null, OverrideFn[], Custom | [], string]
 
 
 function get_override_model(node: ReactElement, custom: CustomModel) {
@@ -75,7 +76,9 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index:
 
   const tag = get_tag_name(node as Node)
 
-  let result = tag ? matcher.match(tag, (node as ReactElement).props) : [];
+  let MProps = tag ? { ...(node as ReactElement).props, key: (node as ReactElement).key } : {};
+
+  let result = tag ? matcher.match(tag, MProps) : [];
 
   const [overrideNode, overrideFns, custom, storeId] = cb(result);
 
@@ -94,12 +97,12 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index:
       }
     }
     
-    if (Object.keys(overrideFns).length || custom.length) {
+    if (overrideNode || Object.keys(overrideFns).length || custom.length) {
 
       const data: OverrideData = {
         node: {
-          type: node.type,
-          props: node.props, 
+          type: (overrideNode || node).type,
+          props: (overrideNode || node).props, 
         },
         children, 
         override: overrideFns, 
@@ -126,9 +129,9 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index:
   return node;
 } 
 
-function apply_overrides(overrides: Override[], id: string): [ReactNode, OverrideFn[], Custom | [], string] {
+function apply_overrides(overrides: Override[], id: string): [ReactElement | null, OverrideFn[], Custom | [], string] {
 
-  let node: ReactNode = null;
+  let node: ReactElement | null = null;
   let functions: OverrideFn[] = [];
   let custom: Custom | [] = [];
   if (overrides && overrides.length) {
@@ -158,7 +161,7 @@ function apply_overrides(overrides: Override[], id: string): [ReactNode, Overrid
 } 
 
 
-export function override(node: ReactNode, overrides: Overrides<KeyValue>, id: string) {
+export function override(node: ReactNode, overrides: Queries<KeyValue>, id: string) {
   let selectors = Object.keys(overrides);
   return map_element(
     node, 

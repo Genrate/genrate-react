@@ -1,34 +1,27 @@
-import { ReactNode, useEffect, useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { store, Subscription } from '../store';
-import { CustomModel, CustomPass, CustomAttach, override, Overrides, ModelKey, ModelKeyFn, ModelValueFn } from "../override";
+import { CustomModel, CustomPass, CustomAttach, override, Queries, ModelKey, ModelKeyFn, ModelValueFn, CustomQuery } from "../override";
 
 type KeyValue = { [key: string]: any };
-export function useGenRate<Data extends KeyValue>(data?: Data) {
+export function useGenRate<Data extends KeyValue>(data?: Data, storeId?: string) {
   
   const id = useId();
 
-  store.init<Data>(id, (data || {}) as Data);
+  const getStoreId = () => storeId || id
+
+  store.init<Data>(getStoreId(), (data || {}) as Data);
 
   const [state, setState] = useState(data as Data)
 
-  let keys: string[] = [];
 
   useEffect(() => {
-    let subs: Subscription[] = [];
-    if (!subs.length && keys?.length) {
-      subs = keys && keys.map(key => 
-        store.subscribe(id, key, (value) => setState({ ...state, [key]: value } as Data))
-      )
-    }
-
     return () => {
-      subs && subs.map(sub => sub.unsubscribed())
-      store.del(id)
+      store.del(getStoreId())
     };
   }, [])
 
   function set(key: keyof Data, value: Data[typeof key]) {
-    store.set(id, key as string, value)
+    store.set(getStoreId(), key as string, value)
   }
 
   function model(
@@ -44,7 +37,7 @@ export function useGenRate<Data extends KeyValue>(data?: Data) {
       keyFn.push((p) => p.name);
     }
 
-    return ['model', id, keyFn, valueFn, valueProp, keyProp] as CustomModel;
+    return ['model', getStoreId(), keyFn, valueFn, valueProp, keyProp] as CustomModel;
   }
 
   function pass(all: true): CustomPass;
@@ -54,40 +47,55 @@ export function useGenRate<Data extends KeyValue>(data?: Data) {
 
     if (!fields || !fields.length) throw Error('No data specified to pass on')
 
-    let keys: CustomPass[1] = fields as string[]; 
-    let except: CustomPass[2] = [];
+    let keys: CustomPass[2] = fields as string[]; 
+    let except: CustomPass[3] = [];
     if (fields[0] === true) {
       keys = fields[0];
       except = (fields[1] || []) as string[]
     }
 
-    return ['pass', keys, except];
+    return ['pass', getStoreId(), keys, except];
   }
 
-  function attach<F extends (props: any) => ReactNode>(
+  function attach<F extends (props: any) => JSX.Element>(
     component: F, 
     pass?: (keyof Data)[] | Parameters<F>[0] | ((data: Data) => Parameters<F>[0])
   ) {
-    if (['function', 'array'].indexOf(typeof pass) < 0) {
+
+    if (typeof pass != 'function' && !Array.isArray(pass)) {
       const res = { ...pass };
       pass = () => res;
     }
 
-    return ['attach', component, pass] as CustomAttach
+    return ['attach', getStoreId(), component, pass] as CustomAttach
   }
 
-  function view(template: (data: any) => ReactNode, selectors: Overrides<Data>) {
+  function query(queries: Queries<Data>) {
+    return ['query', getStoreId(), queries] as CustomQuery
+  }
 
-    if (data && (data as any).gcomponent &&
-        typeof (data as any).gcomponent == 'function') {
-      template = (data as any).gcomponent;
-    }
+  function view(template: (data: any) => JSX.Element, queries: Queries<Data>) {
+    
+    let keys: string[] = [];
 
-    const proxy = store.proxy(id, (prop) => keys.push(prop as string))
+    const proxy = store.proxy(getStoreId(), (prop) => keys.push(prop as string))
     const node = template(proxy);
 
-    return override(node, selectors as Overrides<any>, id);
+    if (!store.events[getStoreId()] && keys.length) {
+      keys && keys.map(key => 
+        store.subscribe(getStoreId(), key, (value) => setState({ ...state, [key]: value } as Data))
+      )
+    }
+
+    return override(node, queries as Queries<any>, getStoreId()) as JSX.Element;
   }
 
-  return { view, set, model, attach, pass };
+  return { 
+    v: view, view,
+    s: set, set,
+    m: model, model,
+    a: attach, attach,
+    p: pass, pass,
+    q: query, query,
+  };
 }

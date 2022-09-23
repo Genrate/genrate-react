@@ -60,11 +60,10 @@ export const store = {
    data: {} as StoreMap,
 
   init<D = StoreData>(id: string, props: D) {
-    if (props || !this.data[id]) {
+    if (!this.data[id] || props) {
     
       let initial = this.data[id] || {}
       for (let k in props) {
-        if (k == 'gtype') continue;
         initial = { ...initial, [k]: (props as any)[k] };
       }
   

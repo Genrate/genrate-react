@@ -16,7 +16,8 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
     let [type, ] = custom;
     let keys: string[] = [];
     if (type == 'pass') {
-      let [,fields, except] = custom as CustomPass;
+
+      let [,,fields, except] = custom as CustomPass;
       if (typeof fields == 'boolean') {
         exceptKeys = except;
         newKeySub = fields;
@@ -27,12 +28,10 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
       }
       
     } else if (type == 'attach') {
-      let [,,props] = custom as CustomAttach;
-
+      let [,,,props] = custom as CustomAttach;
       if (Array.isArray(props)) {
         keys = props as string[];
       } else if (typeof props == 'function'){
-        if (!override) override = [];
         override.push(props)
       }      
     }
@@ -54,13 +53,13 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
 
   useEffect(() => {
 
-    if (!storeKeys || !storeKeys.length) return;
-
     if (newKeySub) {
       store.subscribe(storeId, ':new-key', (key) => {
         return (exceptKeys.indexOf(key) < 0) && forceUpdate()
       })
     }
+
+    if (!storeKeys || !storeKeys.length) return;
 
     const subs = storeKeys && storeKeys.map(key => 
       store.subscribe(storeId, key, () => forceUpdate())

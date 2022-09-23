@@ -2,10 +2,10 @@ import { ReactNode } from "react";
 
 const REGEXP_WS ='[\\x20\\t\\r\\n\\f]';
 const REGEXP_ID = `(?:\\\\[\\da-fA-F]{1,6}${REGEXP_WS}?|\\\\[^\\r\\n\\f]|[\\w-]|[^\0-\\x7f])+`;
-const REGEXP_ATTR = `\\[${REGEXP_WS}*(${REGEXP_ID})(?:${REGEXP_WS}*([*^$|!~]?=)${REGEXP_WS}` + 
+const REGEXP_ATTR = `\\[${REGEXP_WS}*(${REGEXP_ID})(?:${REGEXP_WS}*([*^$!~]?=)${REGEXP_WS}` + 
                     `*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|(${REGEXP_ID}))|)${REGEXP_WS}*\\]`;
 
-export type Attrs = { [key: string]: [string, string] | boolean }
+export type Attrs = { [key: string]: [string, string | undefined] | boolean }
 
 export type Node = ReactNode & { type?: { name: string, render: { name: string }, type: { render: { name: string, displayName: string }}}}
 
@@ -36,11 +36,20 @@ export function extract_attributes(selector: string) {
   while (true) {
 
     if (selector && selector.length) {
+
+      if (selector.endsWith('=]')) selector = selector.replace(/\=\]$/, '=undefined]')
+
       let attrMatch = selector.match(new RegExp(`^${REGEXP_ATTR}`));
       if (attrMatch && attrMatch.length) {
         selector = selector.replace(attrMatch[0], '');
-        attrs[attrMatch[1]] = attrMatch[5] ? [attrMatch[2], attrMatch[5]] : true
+        let value = attrMatch[3] || attrMatch[4] || attrMatch[5] || null;
+        attrs[attrMatch[1]] = value && value != 'undefined' ? [attrMatch[2], value] : true
         continue;
+      } else {
+        // try  {
+          console.warn(`${selector} Error: failed to get selector value`)
+        // } catch(e) {}
+        attrs['$$FAIL$$'] = ['=', '$$ATTR$$'];
       }
     }
 
@@ -74,19 +83,18 @@ export function match_attrs(attrs: Attrs, props: { [key: string]: string }) {
       continue;
     }
 
-    let [op, val] = attrs[a] as [string, string];
+    let [op, val] = attrs[a] as [string, string | undefined];
 
-    if (val && props[a] && typeof props[a] != 'string' && typeof props[a] != 'number') {
+    if (val && props && props[a] && typeof props[a] != 'string' && typeof props[a] != 'number') {
       return false;
     }
-
+    
     if (
-      (!val && props[a] == undefined) ||
-      (op == '=' && (!props[a] || props[a] != val)) ||
-      (op == '~=' && (!props[a] || !str_exact_contains(props[a], val))) ||
-      (op == '*=' && (!props[a] || (`${props[a]}`).indexOf(val) < 0)) ||
-      (op == '^=' && (!props[a] || (`${props[a]}`).startsWith(val))) ||
-      (op == '$=' && (!props[a] || (`${props[a]}`).endsWith(val)))
+      (op == '=' && (props[a] != val)) ||
+      (op == '~=' && (!props[a] || !val || !str_exact_contains(props[a], val))) ||
+      (op == '*=' && (!props[a] || !val || (`${props[a]}`).indexOf(val) < 0)) ||
+      (op == '^=' && (!props[a] || !val || !(`${props[a]}`).startsWith(val))) ||
+      (op == '$=' && (!props[a] || !val || !(`${props[a]}`).endsWith(val)))
     ) {
       return false;
     }
