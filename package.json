@@ -1,6 +1,6 @@
 {
   "name": "@genrate/react",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "React tools to organize resource and add more plexibility in coding and building react apps",
   "main": "./lib/src/index.js",
   "types": "./lib/src/index.d.ts",
@@ -50,31 +50,23 @@
   "peerDependencies": {
     "@types/react": "^16.8 || ^17.0 || ^18.0",
     "@types/react-dom": "^16.8 || ^17.0 || ^18.0",
-    "@reduxjs/toolkit": "^1",
     "react": "^16.8 || ^17.0 || ^18.0",
     "react-dom": "^16.8 || ^17.0 || ^18.0"
   },
   "peerDependenciesMeta": {
     "@types/react": {
-      "optional": true
+      "required": true
     },
     "@types/react-dom": {
-      "optional": true
-    },
-    "@reduxjs/toolkit": {
-      "optional": true
+      "required": true
     },
     "react-dom": {
-      "optional": true
-    },
-    "react-native": {
-      "optional": true
+      "required": true
     }
   },
   "devDependencies": {
     "@commitlint/cli": "^16.2.3",
     "@commitlint/config-conventional": "^16.2.1",
-    "@reduxjs/toolkit": "^1.8.5",
     "@semantic-release/changelog": "^6.0.1",
     "@semantic-release/commit-analyzer": "^9.0.2",
     "@semantic-release/git": "^10.0.1",

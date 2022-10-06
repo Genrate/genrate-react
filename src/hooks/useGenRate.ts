@@ -2,8 +2,9 @@ import { useEffect, useId, useState } from "react";
 import { store, Subscription } from '../store';
 import { CustomModel, CustomPass, CustomAttach, override, Queries, ModelKey, ModelKeyFn, ModelValueFn, CustomQuery } from "../override";
 
-type KeyValue = { [key: string]: any };
-export function useGenRate<Data extends KeyValue>(data?: Data, storeId?: string) {
+type GenRateData = { [key: string]: any };
+
+export function useGenRate<Data extends GenRateData>(data?: Partial<Data>, storeId?: string) {
   
   const id = useId();
 
@@ -12,7 +13,6 @@ export function useGenRate<Data extends KeyValue>(data?: Data, storeId?: string)
   store.init<Data>(getStoreId(), (data || {}) as Data);
 
   const [state, setState] = useState(data as Data)
-
 
   useEffect(() => {
     return () => {

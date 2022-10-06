@@ -64,6 +64,10 @@ export const store = {
     
       let initial = this.data[id] || {}
       for (let k in props) {
+        if (initial[k] != props[k]) {
+          this.emit(id, k, props[k]);
+        }
+
         initial = { ...initial, [k]: (props as any)[k] };
       }
   
