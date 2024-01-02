@@ -1,4 +1,4 @@
-import React, { ReactElement } from 'react'
+import React, { ReactElement, useState } from 'react'
 import {cleanup, fireEvent, render} from '@testing-library/react'
 import { useGenRate } from "../src";
 import { arrayBuffer } from 'stream/consumers';
@@ -6,6 +6,10 @@ import { arrayBuffer } from 'stream/consumers';
 const TestLayout = ({ test = '2', sample = '1' }) => (
   <div>
     <span></span>
+    {[
+      <span key={1}>1</span>,
+      <span key={2}>2</span>
+    ]}
   </div>
 )
 
@@ -17,6 +21,20 @@ const TestOutput = ({ test = '1', sample = '' }) => (
     ]}
   </div>
 )
+
+const TestOutput2 = () => {
+
+  const [num, setNum] = useState(0);
+
+  return (
+    <div title={`${num}`}>
+      <TestOutput />
+      <button onClick={() => setNum(1)}></button>
+    </div>
+  )
+}
+
+
 
 const TestInput = ({ list = [1,2] }) => (
   <div>
@@ -153,6 +171,22 @@ const TestQuery = () => {
   }) as ReactElement
 }
 
+const TestEach = () => {
+  const { view, each, query } = useGenRate({ data: [1, 2, 3]})
+
+  return view(TestOutput2, {
+    TestOutput: each(
+      ({ data }) => data.map(d => 
+        d == 2 
+          ? query({
+              'span[key=2]': false,
+              span: () => ({ test: 'Query' })
+            })
+          : ({ test: 'each', sample: d }))
+    ),
+  }) as ReactElement
+}
+
 afterEach(cleanup)
 
 describe('index', () => {
@@ -267,6 +301,18 @@ describe('index', () => {
 
       const { container } = render(<TestQuery />);
 
+      expect(container.querySelector('span[test="Query"]')).toBeTruthy();
+    });
+
+    it('should render and apply each data', () => {
+
+      const { container } = render(<TestEach />);
+
+      const button = container.querySelector('button');
+      if (button) fireEvent.click(button);
+
+      expect(container.querySelector('div[title]')).toHaveAttribute('title', "1");
+      expect(container.querySelector('span')).toHaveTextContent('each');
       expect(container.querySelector('span[test="Query"]')).toBeTruthy();
     });
   });

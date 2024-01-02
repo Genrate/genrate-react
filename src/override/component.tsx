@@ -2,9 +2,9 @@ import React, { JSXElementConstructor, useState } from "react";
 import { CustomAttach, CustomQuery, KeyValue, Queries } from ".";
 import { useGenRate } from "../hooks/useGenRate";
 import { useOverrideProps } from "../hooks/useOverrideProps";
-import { store } from "../store";
+import { OverrideData, store } from "../store";
 
-export type ElementType = string | JSXElementConstructor<any> | ((p: any) => JSX.Element)
+export type ElementType = string | JSXElementConstructor<KeyValue> | ((p: KeyValue) => JSX.Element)
 
 interface OverrideProps { 
   id: string;
@@ -17,7 +17,7 @@ export const GenRateModel = React.memo((props: OverrideProps) => {
   const { node, override, custom, model, children } = store.override[storeId][id];
 
   const [data, setData] = useState<string | number | boolean>('');
-  const overrideProps = useOverrideProps(override, custom, storeId)
+  const [overrideProps] = useOverrideProps(override, custom, storeId)
 
   let modelProps = {};
   if (model && model.key) {
@@ -50,7 +50,7 @@ export const GenRateModel = React.memo((props: OverrideProps) => {
 })
 
 interface GenRateQueryProps { 
-  node: (p: any) => JSX.Element, 
+  node: (p: KeyValue) => JSX.Element, 
   queries: Queries<KeyValue>, 
   data: KeyValue, 
   storeId: string 
@@ -67,11 +67,12 @@ export const GenRateOverride = React.memo((props: OverrideProps) => {
   const { storeId, id } = props;
   const { node, override, custom, children } = store.getOverride(storeId, id);
 
-  let overrideProps = useOverrideProps(override, custom, storeId);
+  let [overrideProps, overrideItems] = useOverrideProps(override, custom, storeId);
 
   const EComponent = node.type;
 
-  const EProps = { ...node.props, ...overrideProps }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const EProps: any = { ...node.props, ...overrideProps }
 
   let proxy = new Proxy(EProps, {
     get(target, p: string) {
@@ -95,17 +96,48 @@ export const GenRateOverride = React.memo((props: OverrideProps) => {
     }
   }
 
-  if (typeof EComponent == 'function') {
-
-    if (queries) {
-      const QProps = {
-        node: EComponent as (p: any) => JSX.Element, 
-        queries, data: proxy, storeId: queryStoreId
-      }
-
-      return <GenRateQuery {...QProps} />
+  if (queries) {
+    const QProps = {
+      node: EComponent as (p: KeyValue) => JSX.Element, 
+      queries, data: proxy, storeId: queryStoreId
     }
 
+    return <GenRateQuery {...QProps} />
+  }
+
+  if (overrideItems && overrideItems.length) {
+    const components = [];
+    let i = 0;
+    for (let item of overrideItems) {
+      if (Array.isArray(item)) {
+
+        const data: OverrideData = {
+          node: {
+            type: node.type,
+            props: node.props, 
+          },
+          children, 
+          override: [], 
+          custom: item as (CustomAttach | CustomQuery),
+        }
+
+        const overrideId = `${id}-${i}`;
+        store.setOverride(storeId, overrideId, data);      
+        components.push(
+          genrate({ key: overrideId, id: overrideId, storeId }, false)
+        )
+      } else {
+        components.push(
+          <EComponent key={`${id}-${i}`} id={`${id}-${i}`} {...EProps} {...item} >{children}</EComponent>      
+        )
+      }
+      i++;
+    }
+
+    return components;
+  }
+
+  if (typeof EComponent == 'function') {
     return (EComponent as Function)(proxy);
   }
 

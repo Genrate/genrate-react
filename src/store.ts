@@ -1,109 +1,98 @@
-import { ReactElement } from "react"
-import { Custom, ModelValueFn, OverrideFn } from "./override"
-import { ElementType } from "./override/component"
-
-interface StoreData {
-  [key: string]: any
-}
+import { ReactElement } from 'react';
+import { Custom, KeyValue, ModelValueFn, OverrideFn } from './override';
+import { ElementType } from './override/component';
 
 interface StoreMap {
-  [key: string]: StoreData
+  [key: string]: KeyValue;
 }
 
-export interface OverrideModel { 
-  id: string,
-  key: string,
+export interface OverrideModel {
+  id: string;
+  key: string;
   prop?: {
-    element: ReactElement
-    key: string
-  },
-  valueFn: ModelValueFn,
+    element: ReactElement;
+    key: string;
+  };
+  valueFn: ModelValueFn;
   keyProp: string;
   valueProp: string;
 }
 
 export interface OverrideData {
   node: {
-    type: ElementType,
-    props: any,
+    type: ElementType;
+    props: KeyValue;
   };
   children: ReactElement;
-  override: OverrideFn[]; 
+  override: OverrideFn[];
   custom: Custom | [];
-  model?: OverrideModel
+  model?: OverrideModel;
 }
 
 interface StoreOverride {
-  [key: string]: OverrideData
+  [key: string]: OverrideData;
 }
 
 interface StoreOverrideMap {
-  [key: string]: StoreOverride
+  [key: string]: StoreOverride;
 }
 
-type Listener = (value: any) => void
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Listener = (value: any) => void;
 
-export interface Subscription { 
-  listener: Listener, 
-  unsubscribed: () => void
+export interface Subscription {
+  listener: Listener;
+  unsubscribed: () => void;
 }
 
-interface StoreEvent { 
-  [key: string]: Subscription[] 
-};
+interface StoreEvent {
+  [key: string]: Subscription[];
+}
 
 interface StoreEventMap {
-  [key: string]: StoreEvent
+  [key: string]: StoreEvent;
 }
 
 export const store = {
-   data: {} as StoreMap,
+  data: {} as StoreMap,
 
-  init<D = StoreData>(id: string, props: D) {
+  init<D = KeyValue>(id: string, props: D) {
     if (!this.data[id] || props) {
-    
-      let initial = this.data[id] || {}
-      for (let k in props) {
-        if (initial[k] != props[k]) {
-          this.emit(id, k, props[k]);
-        }
-
-        initial = { ...initial, [k]: (props as any)[k] };
+      let initial = this.data[id] || {};
+      for (const k in props) {
+        initial = { ...initial, [k]: props[k] };
       }
-  
+
       this.data[id] = { ...initial };
     }
   },
 
   proxy(id: string, cb?: (prop: string) => void) {
-
     return new Proxy(this.data[id], {
-      get: (_t: any, prop: string) => {
-        cb && cb(prop)
-        return this.data[id][prop] || null
+      get: (_t, prop: string) => {
+        cb?.(prop);
+        return this.data[id][prop] || null;
       },
-    })
+    });
   },
 
   get(id: string, key: string) {
     return this.data[id][key] || null;
   },
 
-  set (id: string, key: string, value: any) {
-
-    if (!(this.data[id] as Object).hasOwnProperty(key)) {
-      this.emit(id, ':new-key', key)
+  set(id: string, key: keyof KeyValue, value: KeyValue[typeof key]) {
+    if (!Object.prototype.hasOwnProperty.call(this.data[id], key)) {
+      this.emit(id, ':new-key', key);
     }
 
     this.data[id][key] = value;
-    this.emit(id, key, value);
+    this.emit(id, key as string, value);
   },
-  del (id: string) {
+  del(id: string) {
     delete this.data[id];
     delete this.events[id];
     delete this.override[id];
   },
-
 
   override: {} as StoreOverrideMap,
   setOverride(id: string, key: string, data: OverrideData) {
@@ -115,37 +104,36 @@ export const store = {
   },
 
   getOverride(id: string, key: string) {
-    return this.override[id] && this.override[id][key];
+    return this.override[id]?.[key];
   },
 
   events: {} as StoreEventMap,
   subscribe(id: string, event: string, listener: Listener) {
-
     if (!this.events[id]) this.events[id] = {};
     if (!this.events[id][event]) this.events[id][event] = [];
 
     const subscriptions = this.events[id][event];
 
-    let subscription = { 
+    const subscription = {
       listener,
       unsubscribed() {
-        let pos = subscriptions.indexOf(this);
+        const pos = subscriptions.indexOf(this);
         if (pos != -1) {
           subscriptions.splice(pos, 1);
         }
-      }
+      },
     };
 
-    this.events[id][event].push(subscription)
-    return subscription
+    this.events[id][event].push(subscription);
+    return subscription;
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit(id: string, event: string, data: any) {
-    if (this.events[id] && this.events[id][event]) {
-      for (let subscription of this.events[id][event]) {
-        subscription.listener(data)
+    if (this.events[id]?.[event]) {
+      for (const subscription of this.events[id][event]) {
+        subscription.listener(data);
       }
     }
-  }
-
-}
+  },
+};
