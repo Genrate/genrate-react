@@ -15,7 +15,7 @@ export type OverrideFn<D = KeyValue> = (data: D) => KeyValue;
 
 export type ModelKey = string | [string, ModelKeyFn?];
 export type ModelKeyFn = (p: KeyValue) => string;
-export type ModelValueFn<E = ChangeEvent<HTMLInputElement>> = (e: E) => string | number | boolean;
+export type ModelValueFn<E = ChangeEvent> = (e: E) => string | number | boolean;
 type DataKeyFn = string[] | ((data: KeyValue) => KeyValue);
 
 export type CustomModel = ['model', string, [string, ModelKeyFn] | ModelKeyFn, ModelValueFn, string, string];
@@ -91,6 +91,7 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index 
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (overrideNode || Object.keys(overrideFns).length || custom.length) {
       const data: OverrideData = {
         node: {
@@ -111,12 +112,7 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index 
       store.setOverride(storeId, overrideId, data);
       return genrate({ key: index, id: overrideId, storeId }, isModel);
     } else if (children != node.props.children) {
-      return rebuild(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        node.type as JSXElementConstructor<any>,
-        { ...node.props, key: index },
-        children
-      );
+      return rebuild(node.type as JSXElementConstructor<KeyValue>, { ...node.props, key: index }, children);
     }
   }
 

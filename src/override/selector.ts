@@ -1,29 +1,28 @@
-import { Attrs, extract_attributes, extract_tag, map_selector, match_attrs } from "../utils";
+import { Attrs, extract_attributes, extract_tag, map_selector, match_attrs } from '../utils';
 
-interface Tag { 
-  tag: string, attrs: Attrs
+interface Tag {
+  tag: string;
+  attrs: Attrs;
 }
 
-interface SelectorMap { 
-  [key: string]: Tag & ({ next: Tag[] }) 
+interface SelectorMap {
+  [key: string]: Tag & { next: Tag[] };
 }
 
-interface TagMap { 
-  [key: string]: SelectorMap 
+interface TagMap {
+  [key: string]: SelectorMap;
 }
 
 const Matcher = {
   /**
    * Cache Selector
    */
-  cache: {} as SelectorMap
-}
+  cache: {} as SelectorMap,
+};
 
 export function matcher(selectors: string[], parent: TagMap = {}, child: TagMap = {}) {
-
   if (!Object.keys(parent).length) {
-    for (let selector of selectors) {
-
+    for (const selector of selectors) {
       if (Matcher.cache[selector]) {
         const tag = Matcher.cache[selector].tag;
         if (!parent[tag]) parent[tag] = {};
@@ -37,50 +36,45 @@ export function matcher(selectors: string[], parent: TagMap = {}, child: TagMap 
         let tag = extract_tag(level);
         let attrs = {};
         if (tag || level.startsWith('[')) {
-          attrs = extract_attributes(
-            tag ? level.replace(tag, '') : level
-          )
+          attrs = extract_attributes(tag ? level.replace(tag, '') : level);
         }
 
         if (parent) {
-
           if (!tag) tag = '*';
           if (!selectorTag) selectorTag = tag;
 
           if (!parent[selectorTag]) parent[selectorTag] = {};
 
           if (!parent[selectorTag][selector]) {
-            parent[selectorTag][selector] = { tag, attrs, next: [] }
+            parent[selectorTag][selector] = { tag, attrs, next: [] };
           } else {
-            parent[selectorTag][selector].next.push({ tag, attrs })
+            parent[selectorTag][selector].next.push({ tag, attrs });
           }
 
-          Matcher.cache[selector] = parent[selectorTag][selector]
+          Matcher.cache[selector] = parent[selectorTag][selector];
         }
-      })
-
+      });
     }
   }
 
   return {
     child: {} as TagMap,
 
-    match(name: string, props: { [key: string]: string })  {
-      let result: string[] = [
+    match(name: string, props: { [key: string]: string }) {
+      const result: string[] = [
         ...this.checkTag(child[name], props),
         ...this.checkTag(child['*'], props),
-        ...this.checkTag((parent)[name], props),
-        ...this.checkTag((parent)['*'], props),
-      ]
-      
+        ...this.checkTag(parent[name], props),
+        ...this.checkTag(parent['*'], props),
+      ];
+
       return result;
     },
 
     checkTag(matcher: SelectorMap, props: { [key: string]: string }) {
-      let result: string[] = [];
+      const result: string[] = [];
       if (matcher) {
-        for (let key in matcher) {
-
+        for (const key in matcher) {
           const { attrs, next } = matcher[key];
 
           let isMatch = true;
@@ -90,15 +84,15 @@ export function matcher(selectors: string[], parent: TagMap = {}, child: TagMap 
           }
 
           if (isMatch) {
-
             if (!next.length) {
               result.push(key);
             } else {
-              let nextTag = next[0].tag;
-              if(!this.child[nextTag]) this.child[nextTag] = {};
+              const nextTag = next[0].tag;
+              if (!this.child[nextTag]) this.child[nextTag] = {};
               this.child[nextTag][key] = {
-                ...next[0], next: next.filter((_v, i) => i != 0) 
-              } 
+                ...next[0],
+                next: next.filter((_v, i) => i != 0),
+              };
             }
           }
         }
@@ -107,9 +101,8 @@ export function matcher(selectors: string[], parent: TagMap = {}, child: TagMap 
       return result;
     },
 
-
     next() {
-      return matcher(selectors, parent, this.child)
-    }
-  }
+      return matcher(selectors, parent, this.child);
+    },
+  };
 }

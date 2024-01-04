@@ -35,7 +35,7 @@ export function useGenRate<Data extends KeyValue>(data?: Partial<Data>, storeId?
 
   function model(
     key: ModelKey | ModelKeyFn = (p) => p.name,
-    valueFn: ModelValueFn = (e) => e.target.value,
+    valueFn: ModelValueFn = (e) => (e.target as HTMLInputElement).value,
     valueProp = 'value',
     keyProp = 'onChange'
   ) {
@@ -64,8 +64,7 @@ export function useGenRate<Data extends KeyValue>(data?: Partial<Data>, storeId?
     return ['pass', getStoreId(), keys, except];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function attach<F extends (props: any) => JSX.Element>(
+  function attach<F extends (props: KeyValue) => JSX.Element>(
     component: F,
     pass?: Array<keyof Data> | Parameters<F>[0] | ((data: Data) => Parameters<F>[0])
   ) {

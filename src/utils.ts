@@ -14,17 +14,19 @@ export type Node = ReactNode & {
 
 export function get_tag_name(node: Node) {
   return (
+    /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
     (typeof node?.type == 'string' && node?.type) ||
     node?.type?.name ||
     node?.type?.render?.name ||
     node?.type?.type?.render?.displayName ||
     node?.type?.type?.render?.name
+    /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
   );
 }
 
 export function extract_tag(selector: string) {
   const match = selector.match(new RegExp(`^(${REGEXP_ID}|[*])`));
-  return (match?.length && match[0]) || '';
+  return (match?.length && match[0]) ?? '';
 }
 
 export function extract_attributes(selector: string) {
