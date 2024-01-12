@@ -1,8 +1,8 @@
 import { useEffect, useReducer } from 'react';
-import { Custom, CustomPass, CustomAttach, OverrideFn, KeyValue, CustomQuery } from '../override';
+import { CustomAttach, OverrideFn, KeyValue, CustomQuery, CustomOverride, CustomEach, CustomModel } from '../override';
 import { store } from '../store';
 
-export function useOverrideProps(override: OverrideFn[], custom: Custom | [], storeId: string) {
+export function useOverrideProps(override: OverrideFn[], custom: CustomOverride, storeId: string) {
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
   const storeKeys: string[] = [];
@@ -10,62 +10,85 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
   let newKeySub = false;
 
   let overrideProps: KeyValue = {};
-  let overrideItems: Array<KeyValue | CustomAttach | CustomQuery> = [];
+  let overrideItems: Array<false | KeyValue | CustomAttach | CustomQuery> = [];
+  const overrideCustom: CustomOverride = {};
 
-  if (custom?.length) {
-    const [type] = custom;
-    let keys: string[] = [];
-
-    /**
-     * Parse `pass` keys to subscribe
-     */
-    if (type == 'pass') {
-      const [, , fields, except] = custom as CustomPass;
+  const keyMap: { [key: string]: boolean } = {};
+  if (custom.passes?.length) {
+    for (const pass of custom.passes) {
+      const [, , fields, except] = pass;
       if (typeof fields == 'boolean') {
         exceptKeys = except;
         newKeySub = fields;
-        keys = Object.keys(store.data[storeId]).filter((f) => except.indexOf(f) < 0);
+        Object.keys(store.data[storeId])
+          .filter((f) => except.indexOf(f) < 0)
+          .map((k) => (keyMap[k] = true));
       } else {
-        keys = fields;
-      }
-
-      /**
-       * Parse `attach` keys to subscribe
-       */
-    } else if (type == 'attach') {
-      const [, , , props] = custom as CustomAttach;
-      if (Array.isArray(props)) {
-        keys = props as string[];
-      } else if (typeof props == 'function') {
-        override.push(props);
-      }
-    }
-
-    if (keys?.length) {
-      for (const k of keys) {
-        overrideProps = { ...overrideProps, [k]: store.get(storeId, k) };
-        storeKeys.push(k);
+        fields.map((f) => (keyMap[f] = true));
       }
     }
   }
 
+  Object.keys(keyMap)?.map((k) => {
+    overrideProps = { ...overrideProps, [k]: store.get(storeId, k) };
+  });
+
   if (override || custom) {
-    const proxy = store.proxy(storeId, (prop) => storeKeys.push(prop));
+    const proxy = store.proxy(storeId, (prop) => (keyMap[prop] = true));
 
     if (override.length) {
       for (const fn of override) {
-        overrideProps = { ...overrideProps, ...fn(proxy) };
+        const result = fn(proxy);
+
+        if (Array.isArray(result)) {
+          const [type] = result;
+
+          if (['attach', 'query', 'each'].indexOf(type) > -1) {
+            if (!custom.main && !overrideCustom.main) {
+              overrideCustom.main = result as CustomAttach | CustomQuery | CustomEach;
+            } else {
+              console.warn(
+                `An '${
+                  custom.main?.[0] ?? overrideCustom.main?.[0]
+                }' override is already applied, '${type}' override will be ignored`
+              );
+            }
+          } else if (type == 'model') {
+            if ((custom.main ?? overrideCustom.main)?.[0] == 'each') {
+              console.warn(`An 'each' override is already applied, '${type}' override will be ignored`);
+            } else {
+              overrideCustom.model = result as CustomModel;
+            }
+          }
+        } else {
+          overrideProps = { ...overrideProps, ...fn(proxy) };
+        }
       }
     }
 
-    /**
-     * Parse `each` keys to subscribe
-     */
-    if (custom?.[0] == 'each') {
-      const [, , itemsFn] = custom;
+    const main = overrideCustom?.main ?? custom?.main;
+
+    if (main?.[0] == 'attach') {
+      const [, , , props] = main;
+      if (Array.isArray(props)) {
+        props.map((p) => {
+          keyMap[p] = true;
+          if (!overrideProps[p]) {
+            overrideProps = { ...overrideProps, [p]: store.get(storeId, p) };
+          }
+        });
+      } else {
+        overrideProps = { ...overrideProps, ...props(proxy) };
+      }
+    }
+
+    if (main?.[0] == 'each') {
+      const [, , itemsFn] = main;
       overrideItems = itemsFn(proxy);
     }
   }
+
+  Object.keys(keyMap)?.map((k) => storeKeys.push(k));
 
   useEffect(() => {
     if (newKeySub) {
@@ -83,5 +106,9 @@ export function useOverrideProps(override: OverrideFn[], custom: Custom | [], st
     };
   }, []);
 
-  return [overrideProps, overrideItems] as [KeyValue, Array<KeyValue | CustomAttach | CustomQuery>];
+  return [overrideProps, overrideItems, overrideCustom] as [
+    KeyValue,
+    Array<false | KeyValue | CustomAttach | CustomQuery>,
+    CustomOverride,
+  ];
 }

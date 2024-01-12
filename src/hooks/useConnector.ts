@@ -14,14 +14,14 @@ import {
   CustomEach,
 } from '../override';
 
-export function useGenRate<Data extends KeyValue>(data?: Partial<Data>, storeId?: string) {
+export function useConnector<Data extends KeyValue>(data?: Partial<Data>, storeId?: string) {
   const id = useId();
 
   const getStoreId = () => storeId ?? id;
 
-  store.init<Data>(getStoreId(), (data ?? {}) as Data);
-
   const [state, setState] = useState(data as Data);
+
+  store.init<Data>(getStoreId(), (state ?? data) as Data);
 
   useEffect(() => {
     return () => {
@@ -80,7 +80,7 @@ export function useGenRate<Data extends KeyValue>(data?: Partial<Data>, storeId?
     return ['query', getStoreId(), queries] as CustomQuery;
   }
 
-  function each(items: (data: Data) => Array<KeyValue | CustomQuery | CustomAttach>) {
+  function each(items: (data: Data) => Array<false | KeyValue | CustomQuery | CustomAttach>) {
     return ['each', getStoreId(), items] as CustomEach;
   }
 

@@ -1,5 +1,5 @@
 import { ReactElement } from 'react';
-import { Custom, KeyValue, ModelValueFn, OverrideFn } from './override';
+import { CustomOverride, KeyValue, ModelValueFn, OverrideFn } from './override';
 import { ElementType } from './override/component';
 
 interface StoreMap {
@@ -25,7 +25,7 @@ export interface OverrideData {
   };
   children: ReactElement;
   override: OverrideFn[];
-  custom: Custom | [];
+  custom: CustomOverride;
   model?: OverrideModel;
 }
 
@@ -57,7 +57,7 @@ export const store = {
   data: {} as StoreMap,
 
   init<D = KeyValue>(id: string, props: D) {
-    if (!this.data[id] || props) {
+    if (!this.data[id] || (props && Object.keys(props).length)) {
       let initial = this.data[id] || {};
       for (const k in props) {
         initial = { ...initial, [k]: props[k] };

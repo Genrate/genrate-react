@@ -72,7 +72,7 @@ export const Main = () => (
 ### Add Functionality
 
 ```ts
-import { useGenRate } from '@genrate/react';
+import { useConnector } from '@genrate/react';
 
 interface Data {
   email: string,
@@ -86,7 +86,7 @@ export const SignIn = (
   onSubmit = (data: Data) => console.log('test', data)
 ) => {
 
-  const { view, model, pass, attach } = useGenRate<Data>();
+  const { view, model, pass, attach } = useConnector<Data>();
 
   // render only once
 
@@ -97,6 +97,9 @@ export const SignIn = (
 
     // prop level model auto binding
     'FormControlLabel[control]': model(['control'], (e) => e.target.checked)
+
+    // dynamic auto binding base state data
+    TextField: ({ input }) => input == 'yes' ? model('input2') : model('input'), 
 
     // Add on click event to button
     'Button[type=submit]':
@@ -113,7 +116,7 @@ export const SignIn = (
  * Main Component
  */
 export default function () {
-  const { view, attach, set, pass } = useGenRate()
+  const { view, attach, set, pass, query, each } = useConnector({ list: [1,2,3], input: [] })
 
   return view(Main, {
     // Attach othe component and set prop 
@@ -121,8 +124,31 @@ export default function () {
             // receive data from other component
             onSubmit: (data) => set('user', data)
           }),
+
+    // search inside an element and apply data changes
+    Input: query({
+      TextField: model(),
+      Button: ({ email }) => console.log('email')
+    })
+
+    // Iterator
+    Input: each(({ list }) => list.map((l, i) => {
+
+      if (l == 1) {
+        // query iterated element
+        return query({
+          // array model value
+          TextField: model(`input.${i}`)
+        })
+      } 
+
+      // iterated element props 
+      return ({ test: 'value' })
+    }))
+
+
     // pass data to other component 
-    Test: pass('user')
+    Test: pass('user', 'input')
   })
 }
 

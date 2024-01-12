@@ -1,1 +1,1 @@
-export * from './hooks/useGenRate';
+export * from './hooks/useConnector';

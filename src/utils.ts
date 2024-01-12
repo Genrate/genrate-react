@@ -98,3 +98,25 @@ export function match_attrs(attrs: Attrs, props: { [key: string]: string }) {
 
   return true;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function get_value(oldValue: any, keys: string[], value: any): any {
+  if (!keys?.length) {
+    return value;
+  }
+
+  const key = keys.shift() as string;
+
+  if (isNaN(+key)) {
+    return {
+      ...oldValue,
+      [key]: get_value(oldValue[key], keys, value),
+    };
+  }
+
+  if (!Array.isArray(oldValue)) oldValue = [];
+
+  oldValue[key] = get_value(oldValue[key], keys, value);
+
+  return oldValue;
+}
