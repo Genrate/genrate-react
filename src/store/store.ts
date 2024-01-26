@@ -1,40 +1,7 @@
-import { ReactElement } from 'react';
-import { CustomOverride, KeyValue, ModelValueFn, OverrideFn } from './override';
-import { ElementType } from './override/component';
+import { KeyValue } from '../override';
 
 interface StoreMap {
   [key: string]: KeyValue;
-}
-
-export interface OverrideModel {
-  id: string;
-  key: string;
-  prop?: {
-    element: ReactElement;
-    key: string;
-  };
-  valueFn: ModelValueFn;
-  keyProp: string;
-  valueProp: string;
-}
-
-export interface OverrideData {
-  node: {
-    type: ElementType;
-    props: KeyValue;
-  };
-  children: ReactElement;
-  override: OverrideFn[];
-  custom: CustomOverride;
-  model?: OverrideModel;
-}
-
-interface StoreOverride {
-  [key: string]: OverrideData;
-}
-
-interface StoreOverrideMap {
-  [key: string]: StoreOverride;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,15 +34,6 @@ export const store = {
     }
   },
 
-  proxy(id: string, cb?: (prop: string) => void) {
-    return new Proxy(this.data[id], {
-      get: (_t, prop: string) => {
-        cb?.(prop);
-        return this.data[id][prop] || null;
-      },
-    });
-  },
-
   get(id: string, key: string) {
     return this.data[id][key] || null;
   },
@@ -91,20 +49,6 @@ export const store = {
   del(id: string) {
     delete this.data[id];
     delete this.events[id];
-    delete this.override[id];
-  },
-
-  override: {} as StoreOverrideMap,
-  setOverride(id: string, key: string, data: OverrideData) {
-    if (!this.override[id]) {
-      this.override[id] = {};
-    }
-
-    this.override[id][key] = data;
-  },
-
-  getOverride(id: string, key: string) {
-    return this.override[id]?.[key];
   },
 
   events: {} as StoreEventMap,

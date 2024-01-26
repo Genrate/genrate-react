@@ -1,26 +1,26 @@
-import { useEffect, useReducer } from 'react';
+import { useState } from 'react';
 import { CustomAttach, OverrideFn, KeyValue, CustomQuery, CustomOverride, CustomEach, CustomModel } from '../override';
-import { store } from '../store';
+import { Override } from '../override/override';
+import { get_used_keys } from '../utils';
 
-export function useOverrideProps(override: OverrideFn[], custom: CustomOverride, storeId: string) {
-  const [, forceUpdate] = useReducer((x) => x + 1, 0);
+export function useOverrideProps(override: OverrideFn[], custom: CustomOverride, connectorId: string) {
+  const store = Override.getStore();
+  const [dataParams, setDataParams] = useState<[string[] | undefined, string[] | undefined]>([undefined, undefined]);
+  const storeData = store.useData(connectorId, ...dataParams);
 
-  const storeKeys: string[] = [];
-  let exceptKeys: string[] = [];
-  let newKeySub = false;
+  let exceptKeys: string[] | undefined;
 
   let overrideProps: KeyValue = {};
   let overrideItems: Array<false | KeyValue | CustomAttach | CustomQuery> = [];
   const overrideCustom: CustomOverride = {};
 
-  const keyMap: { [key: string]: boolean } = {};
+  const keyMap: KeyValue<boolean> = {};
   if (custom.passes?.length) {
     for (const pass of custom.passes) {
       const [, , fields, except] = pass;
       if (typeof fields == 'boolean') {
         exceptKeys = except;
-        newKeySub = fields;
-        Object.keys(store.data[storeId])
+        Object.keys(storeData)
           .filter((f) => except.indexOf(f) < 0)
           .map((k) => (keyMap[k] = true));
       } else {
@@ -30,11 +30,11 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
   }
 
   Object.keys(keyMap)?.map((k) => {
-    overrideProps = { ...overrideProps, [k]: store.get(storeId, k) };
+    overrideProps = { ...overrideProps, [k]: storeData[k] };
   });
 
   if (override || custom) {
-    const proxy = store.proxy(storeId, (prop) => (keyMap[prop] = true));
+    const proxy = get_used_keys(storeData, (prop) => (keyMap[prop] = true));
 
     if (override.length) {
       for (const fn of override) {
@@ -74,7 +74,7 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
         props.map((p) => {
           keyMap[p] = true;
           if (!overrideProps[p]) {
-            overrideProps = { ...overrideProps, [p]: store.get(storeId, p) };
+            overrideProps = { ...overrideProps, [p]: storeData[p] };
           }
         });
       } else {
@@ -88,23 +88,9 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
     }
   }
 
-  Object.keys(keyMap)?.map((k) => storeKeys.push(k));
-
-  useEffect(() => {
-    if (newKeySub) {
-      store.subscribe(storeId, ':new-key', (key) => {
-        return exceptKeys.indexOf(key) < 0 && forceUpdate();
-      });
-    }
-
-    if (!storeKeys?.length) return;
-
-    const subs = storeKeys?.map((key) => store.subscribe(storeId, key, () => forceUpdate()));
-
-    return () => {
-      subs?.map((sub) => sub.unsubscribed());
-    };
-  }, []);
+  if (dataParams[0] === undefined) {
+    setDataParams([Object.keys(keyMap), exceptKeys]);
+  }
 
   return [overrideProps, overrideItems, overrideCustom] as [
     KeyValue,

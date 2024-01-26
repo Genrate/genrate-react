@@ -1,5 +1,4 @@
-import { useEffect, useId, useState } from 'react';
-import { store } from '../store';
+import { JSXElementConstructor, useEffect, useId } from 'react';
 import {
   KeyValue,
   CustomModel,
@@ -13,24 +12,45 @@ import {
   CustomQuery,
   CustomEach,
 } from '../override';
+import { get_used_keys } from '../utils';
+import { Override } from '../override/override';
+import { rebuild } from '../override/component';
 
-export function useConnector<Data extends KeyValue>(data?: Partial<Data>, storeId?: string) {
+interface ConnectorOptions<M extends KeyValue<unknown>> {
+  useExtendOverrideMethods?: (connectorId: string, state: KeyValue) => M;
+}
+
+interface ConnectorInitProps extends KeyValue {
+  connectorId: string;
+  queries: Queries<KeyValue>;
+  layout: (data: KeyValue) => JSX.Element;
+  node: JSX.Element;
+  keys: string[];
+}
+
+const ConnectorInit = (props: ConnectorInitProps) => {
+  const { layout, keys, queries, connectorId } = props;
+  const store = Override.getStore();
+  const state = store.useData(connectorId, keys);
+
+  return override(layout(state), queries as Queries<KeyValue>, connectorId) as JSX.Element;
+};
+
+export function useConnectorCore<
+  D extends KeyValue<unknown>,
+  Data extends KeyValue<unknown> = D,
+  M extends KeyValue<unknown> = KeyValue,
+>(data?: Partial<D>, parentId?: string, options?: ConnectorOptions<M>) {
   const id = useId();
+  const store = Override.getStore();
+  const connectorId = parentId ?? id;
 
-  const getStoreId = () => storeId ?? id;
+  const [state, setState] = store.useInit(connectorId, data ?? {});
 
-  const [state, setState] = useState(data as Data);
+  useEffect(() => () => Override.del(connectorId), []);
 
-  store.init<Data>(getStoreId(), (state ?? data) as Data);
-
-  useEffect(() => {
-    return () => {
-      store.del(getStoreId());
-    };
-  }, []);
-
-  function set(key: keyof Data, value: Data[typeof key]) {
-    store.set(getStoreId(), key as string, value);
+  function set(key: keyof D, value: D[typeof key]) {
+    setState(key as string, value);
   }
 
   function model(
@@ -45,7 +65,7 @@ export function useConnector<Data extends KeyValue>(data?: Partial<Data>, storeI
       keyFn.push((p) => p.name);
     }
 
-    return ['model', getStoreId(), keyFn, valueFn, valueProp, keyProp] as CustomModel;
+    return ['model', connectorId, keyFn, valueFn, valueProp, keyProp] as CustomModel;
   }
 
   function pass(all: true): CustomPass;
@@ -61,10 +81,10 @@ export function useConnector<Data extends KeyValue>(data?: Partial<Data>, storeI
       except = (fields[1] ?? []) as string[];
     }
 
-    return ['pass', getStoreId(), keys, except];
+    return ['pass', connectorId, keys, except];
   }
 
-  function attach<F extends (props: KeyValue) => JSX.Element>(
+  function attach<F extends (props: KeyValue) => JSX.Element | null>(
     component: F,
     pass?: Array<keyof Data> | Parameters<F>[0] | ((data: Data) => Parameters<F>[0])
   ) {
@@ -73,31 +93,35 @@ export function useConnector<Data extends KeyValue>(data?: Partial<Data>, storeI
       pass = () => res;
     }
 
-    return ['attach', getStoreId(), component, pass] as CustomAttach;
+    return ['attach', connectorId, component, pass] as CustomAttach;
   }
 
   function query(queries: Queries<Data>) {
-    return ['query', getStoreId(), queries] as CustomQuery;
+    return ['query', connectorId, queries] as CustomQuery;
   }
 
   function each(items: (data: Data) => Array<false | KeyValue | CustomQuery | CustomAttach>) {
-    return ['each', getStoreId(), items] as CustomEach;
+    return ['each', connectorId, items] as CustomEach;
   }
 
-  function view(template: (data: KeyValue) => JSX.Element, queries: Queries<Data>) {
+  function view(layout: (data: KeyValue) => JSX.Element, queries: Queries<Data>) {
     const keys: string[] = [];
 
-    const proxy = store.proxy(getStoreId(), (prop) => keys.push(prop as string));
-    const node = template(proxy);
+    const props = get_used_keys(state, (key) => keys.push(key));
+    const node = layout(props);
 
-    if (!store.events[getStoreId()] && keys.length) {
-      keys?.map((key) => store.subscribe(getStoreId(), key, (value) => setState({ ...state, [key]: value } as Data)));
+    if (keys.length) {
+      return rebuild(ConnectorInit as JSXElementConstructor<KeyValue>, { node, layout, keys, queries, connectorId });
     }
 
-    return override(node, queries as Queries<KeyValue>, getStoreId()) as JSX.Element;
+    return override(node, queries as Queries<KeyValue>, connectorId) as JSX.Element;
   }
 
+  const customMethods = options?.useExtendOverrideMethods?.(connectorId, state) ?? {};
+
   return {
+    ...(customMethods as M),
+    id: connectorId,
     v: view,
     view,
     s: set,
@@ -113,4 +137,8 @@ export function useConnector<Data extends KeyValue>(data?: Partial<Data>, storeI
     e: each,
     each,
   };
+}
+
+export function useConnector<Data extends KeyValue>(data?: Partial<Data>) {
+  return useConnectorCore(data);
 }

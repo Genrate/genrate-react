@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { KeyValue } from './override';
 
 const REGEXP_WS = '[\\x20\\t\\r\\n\\f]';
 const REGEXP_ID = `(?:\\\\[\\da-fA-F]{1,6}${REGEXP_WS}?|\\\\[^\\r\\n\\f]|[\\w-]|[^\0-\\x7f])+`;
@@ -72,7 +73,7 @@ export function str_exact_contains(str: string, match: string) {
   return new RegExp(`(^|[^A-Za-z])${match}([^A-Za-z]|$)`, 'g').test(str);
 }
 
-export function match_attrs(attrs: Attrs, props: { [key: string]: string }) {
+export function match_attrs(attrs: Attrs, props: KeyValue<string>) {
   for (const a in attrs) {
     if (attrs[a] === true) {
       if (!props[a]) return false;
@@ -119,4 +120,13 @@ export function get_value(oldValue: any, keys: string[], value: any): any {
   oldValue[key] = get_value(oldValue[key], keys, value);
 
   return oldValue;
+}
+
+export function get_used_keys(data: KeyValue, cb: (key: string) => void) {
+  return new Proxy(data, {
+    get: (_t, prop: string) => {
+      cb?.(prop);
+      return data[prop] || null;
+    },
+  });
 }

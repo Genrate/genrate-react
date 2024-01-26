@@ -1,5 +1,5 @@
-import React, { ReactElement, useState } from 'react';
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import React, { useState } from 'react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import { useConnector } from '../src';
 
 const TestLayout = () => (
@@ -10,7 +10,16 @@ const TestLayout = () => (
 );
 
 const TestOutput = ({ test = '1', sample = '' }) => (
-  <div>{[<span key={1} id="1">{test}</span>, <span key={2} id="2">{sample}</span>]}</div>
+  <div>
+    {[
+      <span key={1} id="1">
+        {test}
+      </span>,
+      <span key={2} id="2">
+        {sample}
+      </span>,
+    ]}
+  </div>
 );
 
 const TestOutput2 = () => {
@@ -34,7 +43,6 @@ const TestInput = ({ list = [1, 2] }) => (
 );
 
 const TestOutput3 = ({ input = [] }) => {
-
   return (
     <div>
       <TestInput />
@@ -179,37 +187,34 @@ const TestEach = () => {
 };
 
 const TestEachModel = () => {
-
-  const { view, each, model, pass } = useConnector({ data: [1, 2, 3], input: [] });
+  const { view, each, model } = useConnector({ data: [1, 2, 3], input: [] });
 
   return view(TestInput, {
-    input: each(({ data }) =>
-      data.map((_d, i) => model(`input.${i}`))
-    ),
-    TestOutput: ({ input }) => ({ test: JSON.stringify(input) })
+    input: each(({ data }) => data.map((_d, i) => model(`input.${i}`))),
+    TestOutput: ({ input }) => ({ test: JSON.stringify(input) }),
   });
 };
 
 const TestEachQueryModel = () => {
-
   const { view, each, query, model } = useConnector({ data: [1, 2, 3], input: [] });
 
   return view(TestOutput3, {
     TestInput: each(({ data }) =>
-      data.map((_d, i) => query({
-        input: model(`input.${i}`)
-      }))
+      data.map((_d, i) =>
+        query({
+          input: model(`input.${i}`),
+        })
+      )
     ),
   });
 };
 
 const TestConditionalModel = () => {
-
   const { view, model } = useConnector();
 
   return view(TestInput, {
-    input: ({ input }) => input == 'yes' ? model('input1') : model('input'),
-    TestOutput: ({ input, input1 }) => ({ test: `${input}${input1 || ''}` })
+    input: ({ input }) => (input == 'yes' ? model('input1') : model('input')),
+    TestOutput: ({ input, input1 }) => ({ test: `${input}${input1 || ''}` }),
   });
 };
 
@@ -314,7 +319,7 @@ describe('index', () => {
 
     it('should render and apply query data', () => {
       const { container } = render(<TestQuery />);
-      
+
       expect(container.querySelector('span[test="Query"]')).toBeTruthy();
       expect(container.querySelector('span[id="2"]')).toBeFalsy();
     });
@@ -373,7 +378,6 @@ describe('index', () => {
       if (input1) fireEvent.change(input1, { target: { value: 'no' } });
 
       expect(container.querySelector('span[id="1"]')).toHaveTextContent('yesno');
-
     });
   });
 });

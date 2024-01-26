@@ -1,16 +1,15 @@
-import React, { ChangeEvent, JSXElementConstructor, useState } from 'react';
-import { CustomAttach, CustomModel, CustomOverride, CustomQuery, KeyValue, Queries, get_override_model } from '.';
-import { useConnector } from '../hooks/useConnector';
+import React, { ChangeEvent, JSXElementConstructor } from 'react';
+import { CustomAttach, CustomModel, CustomOverride, CustomQuery, KeyValue, Queries } from '.';
+import { useConnectorCore } from '../hooks/useConnector';
 import { useOverrideProps } from '../hooks/useOverrideProps';
-import { OverrideData, store } from '../store';
-import { get_value } from '../utils';
 import md5 from 'md5';
+import { Override, OverrideData } from './override';
 
 export type ElementType = string | JSXElementConstructor<KeyValue> | ((p: KeyValue) => JSX.Element);
 
 interface OverrideProps {
   id: string;
-  storeId: string;
+  connectorId: string;
   key: string;
 }
 
@@ -18,50 +17,38 @@ interface GenRateQueryProps {
   node: (p: KeyValue) => JSX.Element;
   queries: Queries<KeyValue>;
   data: KeyValue;
-  storeId: string;
+  connectorId: string;
 }
 
 export const GenRateQuery = React.memo((props: GenRateQueryProps) => {
-  const { node, queries, data, storeId } = props;
-  const { view } = useConnector(data, storeId);
+  const { node, queries, data, connectorId } = props;
+  const { view } = useConnectorCore(data, connectorId);
   return view(node, queries);
 });
 
 export const GenRateOverride = React.memo((props: OverrideProps) => {
-  const { storeId, id } = props;
-  const overrideData = store.getOverride(storeId, id);
+  const { connectorId, id } = props;
+  const store = Override.getStore();
+  const overrideData = Override.get(connectorId, id);
   const { node, override, custom, children } = overrideData;
 
-  const [modelData, setModelData] = useState<string | number | boolean>('');
-
-  const [overrideProps, overrideItems, overrideCustom] = useOverrideProps(override, custom, storeId);
+  const [overrideProps, overrideItems, overrideCustom] = useOverrideProps(override, custom, connectorId);
 
   let { model } = overrideData;
   if (!model && overrideCustom.model?.length) {
-    model = get_override_model({ ...node.props, ...overrideProps }, overrideCustom.model);
+    model = Override.getModel({ ...node.props, ...overrideProps }, overrideCustom.model);
   }
 
   let modelProps = {};
-  if (model?.key) {
-    const { key, valueFn, keyProp, valueProp } = model;
-    const storeKey = model.prop ? model.prop.key : key;
+  const modelKey = model?.prop?.key ?? model?.key;
 
+  const [modelData, setModelData] = store.useModel(connectorId, modelKey);
+
+  if (model && modelKey) {
+    const { valueFn, keyProp, valueProp } = model;
     modelProps = {
-      name: storeKey,
-      [keyProp]: (e: ChangeEvent) => {
-        const value = valueFn(e);
-        setModelData(value);
-
-        if (storeKey.indexOf('.') > -1) {
-          const keys: string[] = storeKey.split('.');
-          const mainKey: string = keys.shift() as string;
-          const oldValue = store.get(storeId, mainKey);
-          const newValue = get_value(oldValue, keys, value);
-          store.set(storeId, mainKey, newValue);
-        } else {
-          store.set(storeId, storeKey, value);
-        }
-      },
+      name: modelKey,
+      [keyProp]: (e: ChangeEvent) => setModelData(valueFn(e)),
       [valueProp]: modelData,
     };
   }
@@ -106,7 +93,7 @@ export const GenRateOverride = React.memo((props: OverrideProps) => {
       node: EComponent as (p: KeyValue) => JSX.Element,
       queries,
       data: proxy,
-      storeId: queryStoreId,
+      connectorId: queryStoreId,
     };
 
     return <GenRateQuery {...QProps} />;
@@ -140,15 +127,15 @@ export const GenRateOverride = React.memo((props: OverrideProps) => {
           custom: co,
         };
 
-        const model = co.model ? get_override_model(node.props, co.model) : null;
+        const model = co.model ? Override.getModel(node.props, co.model) : null;
 
         if (model) data.model = model;
 
         const overrideId = `${id}-${md5(`${i}${model?.id}`)}`;
-        store.setOverride(storeId, overrideId, data);
+        Override.set(connectorId, overrideId, data);
 
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        components.push(genrate({ key: overrideId, id: overrideId, storeId }));
+        components.push(genrate({ key: overrideId, id: overrideId, connectorId }));
       } else {
         components.push(
           <EComponent key={`${id}-${i}`} id={`${id}-${i}`} {...EProps} {...item}>
@@ -174,6 +161,6 @@ export function genrate(props: OverrideProps) {
   return <GenRateOverride {...props} />;
 }
 
-export function rebuild(Component: JSXElementConstructor<KeyValue>, props: KeyValue, children: React.ReactElement) {
+export function rebuild(Component: JSXElementConstructor<KeyValue>, props: KeyValue, children?: React.ReactElement) {
   return <Component {...props}>{children}</Component>;
 }

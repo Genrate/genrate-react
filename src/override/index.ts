@@ -2,14 +2,14 @@ import { ChangeEvent, isValidElement, JSXElementConstructor, ReactElement, React
 import { get_tag_name, Node } from '../utils';
 import { genrate, rebuild } from './component';
 import { matcher } from './selector';
-import { OverrideData, OverrideModel, store } from '../store';
 
 import md5 from 'md5';
+import { Override, OverrideData } from './override';
 
 type Matcher = ReturnType<typeof matcher>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type KeyValue = { [key: string]: any };
+export type KeyValue<Value = any> = { [key: string]: Value };
 
 export type OverrideFn<D = KeyValue> = (data: D) => KeyValue | CustomModel | CustomAttach | CustomQuery | CustomEach;
 
@@ -38,46 +38,13 @@ export type CustomOverride = {
 
 type Override<D = KeyValue> = OverrideFn<D> | ReactNode | Custom;
 
-export interface Queries<D> {
-  [key: string]: Override<D>;
-}
+export type Queries<D> = KeyValue<Override<D>>;
 
 type MapElementCB = (
   overrides: string[],
   tag: string | undefined,
   props: KeyValue
 ) => [ReactElement | null | false, OverrideFn[], CustomOverride, string];
-
-export function get_override_model(props: KeyValue, custom: CustomModel) {
-  const model: OverrideModel = {
-    id: '',
-    key: '',
-    valueFn: custom[3],
-    valueProp: custom[4],
-    keyProp: custom[5],
-  };
-
-  const keyFn = custom[2];
-
-  if (!Array.isArray(keyFn)) {
-    model.key = keyFn({ ...props });
-    model.id = model.key;
-  } else {
-    let propKey;
-    [model.key, propKey] = keyFn;
-
-    if (isValidElement(props[model.key])) {
-      model.prop = {
-        element: props[model.key],
-        key: typeof propKey == 'function' ? propKey(props[model.key].props) : propKey,
-      };
-
-      model.id = model.prop.key;
-    }
-  }
-
-  return model;
-}
 
 function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index = '0'): ReactNode {
   if (Array.isArray(node)) {
@@ -90,7 +57,7 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index 
 
   const result = tag ? matcher.match(tag, MProps) : [];
 
-  const [overrideNode, overrideFns, custom, storeId] = cb(result, tag, (node as ReactElement).props);
+  const [overrideNode, overrideFns, custom, connectorId] = cb(result, tag, (node as ReactElement)?.props);
 
   if (overrideNode === false) {
     return null;
@@ -121,13 +88,13 @@ function map_element(node: ReactNode, matcher: Matcher, cb: MapElementCB, index 
         custom,
       };
 
-      const model = custom.model ? get_override_model((overrideNode ?? node).props, custom.model) : null;
+      const model = custom.model ? Override.getModel((overrideNode ?? node).props, custom.model) : null;
 
       if (model) data.model = model;
 
       const overrideId = md5(`${result.join('|')}${model?.id}`);
-      store.setOverride(storeId, overrideId, data);
-      return genrate({ key: index, id: overrideId, storeId });
+      Override.set(connectorId, overrideId, data);
+      return genrate({ key: index, id: overrideId, connectorId });
     } else if (children != node.props.children) {
       return rebuild(node.type as JSXElementConstructor<KeyValue>, { ...node.props, key: index }, children);
     }
