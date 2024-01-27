@@ -1,16 +1,12 @@
-import { useState } from 'react';
 import { CustomAttach, OverrideFn, KeyValue, CustomQuery, CustomOverride, CustomEach, CustomModel } from '../override';
 import { Override } from '../override/override';
 import { get_used_keys } from '../utils';
 
 export function useOverrideProps(override: OverrideFn[], custom: CustomOverride, connectorId: string) {
   const store = Override.getStore();
-  const [dataParams, setDataParams] = useState<[string[] | undefined, string[] | undefined]>([undefined, undefined]);
-  const storeData = store.useData(connectorId, ...dataParams);
 
   let exceptKeys: string[] | undefined;
 
-  let overrideProps: KeyValue = {};
   let overrideItems: Array<false | KeyValue | CustomAttach | CustomQuery> = [];
   const overrideCustom: CustomOverride = {};
 
@@ -20,76 +16,71 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
       const [, , fields, except] = pass;
       if (typeof fields == 'boolean') {
         exceptKeys = except;
-        Object.keys(storeData)
-          .filter((f) => except.indexOf(f) < 0)
-          .map((k) => (keyMap[k] = true));
       } else {
         fields.map((f) => (keyMap[f] = true));
       }
     }
   }
 
-  Object.keys(keyMap)?.map((k) => {
-    overrideProps = { ...overrideProps, [k]: storeData[k] };
-  });
-
+  let itemsFn: CustomEach[2];
   if (override || custom) {
-    const proxy = get_used_keys(storeData, (prop) => (keyMap[prop] = true));
+    const proxy = get_used_keys({}, (prop) => (keyMap[prop] = true));
 
-    if (override.length) {
-      for (const fn of override) {
-        const result = fn(proxy);
-
-        if (Array.isArray(result)) {
-          const [type] = result;
-
-          if (['attach', 'query', 'each'].indexOf(type) > -1) {
-            if (!custom.main && !overrideCustom.main) {
-              overrideCustom.main = result as CustomAttach | CustomQuery | CustomEach;
-            } else {
-              console.warn(
-                `An '${
-                  custom.main?.[0] ?? overrideCustom.main?.[0]
-                }' override is already applied, '${type}' override will be ignored`
-              );
-            }
-          } else if (type == 'model') {
-            if ((custom.main ?? overrideCustom.main)?.[0] == 'each') {
-              console.warn(`An 'each' override is already applied, '${type}' override will be ignored`);
-            } else {
-              overrideCustom.model = result as CustomModel;
-            }
-          }
-        } else {
-          overrideProps = { ...overrideProps, ...fn(proxy) };
-        }
-      }
-    }
+    override?.forEach((fn) => fn(proxy));
 
     const main = overrideCustom?.main ?? custom?.main;
 
     if (main?.[0] == 'attach') {
-      const [, , , props] = main;
-      if (Array.isArray(props)) {
-        props.map((p) => {
+      const [, , , attachProps] = main;
+      if (Array.isArray(attachProps)) {
+        attachProps.map((p) => {
           keyMap[p] = true;
-          if (!overrideProps[p]) {
-            overrideProps = { ...overrideProps, [p]: storeData[p] };
-          }
         });
       } else {
-        overrideProps = { ...overrideProps, ...props(proxy) };
+        attachProps(proxy);
+        override.push(attachProps);
       }
     }
 
     if (main?.[0] == 'each') {
-      const [, , itemsFn] = main;
-      overrideItems = itemsFn(proxy);
+      [, , itemsFn] = main;
+      itemsFn(proxy);
     }
   }
 
-  if (dataParams[0] === undefined) {
-    setDataParams([Object.keys(keyMap), exceptKeys]);
+  const state = store.useData(connectorId, Object.keys(keyMap), exceptKeys);
+
+  let overrideProps: KeyValue = state;
+
+  for (const fn of override) {
+    const result = fn(state);
+    if (Array.isArray(result)) {
+      const [type] = result;
+
+      if (['attach', 'query', 'each'].indexOf(type) > -1) {
+        if (!custom.main && !overrideCustom.main) {
+          overrideCustom.main = result as CustomAttach | CustomQuery | CustomEach;
+        } else {
+          console.warn(
+            `An '${
+              custom.main?.[0] ?? overrideCustom.main?.[0]
+            }' override is already applied, '${type}' override will be ignored`
+          );
+        }
+      } else if (type == 'model') {
+        if ((custom.main ?? overrideCustom.main)?.[0] == 'each') {
+          console.warn(`An 'each' override is already applied, '${type}' override will be ignored`);
+        } else {
+          overrideCustom.model = result as CustomModel;
+        }
+      }
+    } else if (typeof result == 'function') {
+      overrideProps = { ...overrideProps, ...result() };
+    }
+  }
+
+  if (itemsFn) {
+    overrideItems = itemsFn(state)();
   }
 
   return [overrideProps, overrideItems, overrideCustom] as [

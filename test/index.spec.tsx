@@ -56,7 +56,7 @@ const TestInputProp = ({ input = <input type="text" name="test" /> }) => <div>{i
 const TestComponent = ({ test = 1 }) => {
   const { view } = useConnector();
 
-  return view(TestLayout, { 'div span': () => ({ test }) });
+  return view(TestLayout, { 'div span': () => () => ({ test }) });
 };
 
 const TestModelPass = () => {
@@ -64,9 +64,11 @@ const TestModelPass = () => {
 
   return view(TestInput, {
     'input[type=text][name]': model('test'),
-    'button[type][type~=submit]': ({ test }) => ({
-      onClick: () => set('sample', `s${test}`),
-    }),
+    'button[type][type~=submit]':
+      ({ test }) =>
+      () => ({
+        onClick: () => set('sample', `s${test}`),
+      }),
     TestOutput: pass('test'),
   });
 };
@@ -76,7 +78,7 @@ const TestModelPass2 = () => {
 
   return view(TestInput, {
     'input[type=text][name]': model(),
-    'button[type~=submit]': () => ({
+    'button[type~=submit]': () => () => ({
       onClick: () => set('sample', `PASS`),
     }),
     TestOutput: pass(true, ['test']),
@@ -164,7 +166,7 @@ const TestQuery = () => {
   return view(TestInput, {
     TestOutput: query({
       'span[key=2]': false,
-      span: () => ({ test: 'Query' }),
+      span: () => () => ({ test: 'Query' }),
     }),
   });
 };
@@ -173,15 +175,17 @@ const TestEach = () => {
   const { view, each, query } = useConnector({ data: [1, 2, 3] });
 
   return view(TestOutput2, {
-    TestOutput: each(({ data }) =>
-      data.map((d) =>
-        d == 2
-          ? query({
-              'span[key=2]': false,
-              span: () => ({ test: 'Query' }),
-            })
-          : { test: 'each', sample: d }
-      )
+    TestOutput: each(
+      ({ data }) =>
+        () =>
+          data.map((d) =>
+            d == 2
+              ? query({
+                  'span[key=2]': false,
+                  span: () => () => ({ test: 'Query' }),
+                })
+              : { test: 'each', sample: d }
+          )
     ),
   });
 };
@@ -190,8 +194,14 @@ const TestEachModel = () => {
   const { view, each, model } = useConnector({ data: [1, 2, 3], input: [] });
 
   return view(TestInput, {
-    input: each(({ data }) => data.map((_d, i) => model(`input.${i}`))),
-    TestOutput: ({ input }) => ({ test: JSON.stringify(input) }),
+    input: each(
+      ({ data }) =>
+        () =>
+          data.map((_d, i) => model(`input.${i}`))
+    ),
+    TestOutput:
+      ({ input }) =>
+      () => ({ test: JSON.stringify(input) }),
   });
 };
 
@@ -199,12 +209,14 @@ const TestEachQueryModel = () => {
   const { view, each, query, model } = useConnector({ data: [1, 2, 3], input: [] });
 
   return view(TestOutput3, {
-    TestInput: each(({ data }) =>
-      data.map((_d, i) =>
-        query({
-          input: model(`input.${i}`),
-        })
-      )
+    TestInput: each(
+      ({ data }) =>
+        () =>
+          data.map((_d, i) =>
+            query({
+              input: model(`input.${i}`),
+            })
+          )
     ),
   });
 };
@@ -214,7 +226,9 @@ const TestConditionalModel = () => {
 
   return view(TestInput, {
     input: ({ input }) => (input == 'yes' ? model('input1') : model('input')),
-    TestOutput: ({ input, input1 }) => ({ test: `${input}${input1 || ''}` }),
+    TestOutput:
+      ({ input, input1 }) =>
+      () => ({ test: `${input}${input1 || ''}` }),
   });
 };
 
@@ -267,6 +281,7 @@ describe('index', () => {
     });
 
     it('should render the override component', () => {
+      console.log('override stars');
       const { container } = render(<TestOverride />);
 
       expect(container.querySelector('span[test]')).toBeTruthy();
@@ -325,6 +340,7 @@ describe('index', () => {
     });
 
     it('should render and apply each data', () => {
+      console.log('apply each data starts');
       const { container } = render(<TestEach />);
 
       const button = container.querySelector('button');

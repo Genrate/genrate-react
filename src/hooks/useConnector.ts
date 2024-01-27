@@ -1,4 +1,4 @@
-import { JSXElementConstructor, useEffect, useId } from 'react';
+import React, { useEffect, useId } from 'react';
 import {
   KeyValue,
   CustomModel,
@@ -28,13 +28,13 @@ interface ConnectorInitProps extends KeyValue {
   keys: string[];
 }
 
-const ConnectorInit = (props: ConnectorInitProps) => {
+const ConnectorInit = React.memo((props: ConnectorInitProps) => {
   const { layout, keys, queries, connectorId } = props;
   const store = Override.getStore();
   const state = store.useData(connectorId, keys);
 
   return override(layout(state), queries as Queries<KeyValue>, connectorId) as JSX.Element;
-};
+});
 
 export function useConnectorCore<
   D extends KeyValue<unknown>,
@@ -90,7 +90,7 @@ export function useConnectorCore<
   ) {
     if (typeof pass != 'function' && !Array.isArray(pass)) {
       const res = { ...pass };
-      pass = () => res;
+      pass = () => () => res;
     }
 
     return ['attach', connectorId, component, pass] as CustomAttach;
@@ -100,7 +100,7 @@ export function useConnectorCore<
     return ['query', connectorId, queries] as CustomQuery;
   }
 
-  function each(items: (data: Data) => Array<false | KeyValue | CustomQuery | CustomAttach>) {
+  function each(items: (data: Data) => () => Array<false | KeyValue | CustomQuery | CustomAttach>) {
     return ['each', connectorId, items] as CustomEach;
   }
 
@@ -111,7 +111,7 @@ export function useConnectorCore<
     const node = layout(props);
 
     if (keys.length) {
-      return rebuild(ConnectorInit as JSXElementConstructor<KeyValue>, { node, layout, keys, queries, connectorId });
+      return rebuild(ConnectorInit, { node, layout, keys, queries: queries as Queries<KeyValue>, connectorId });
     }
 
     return override(node, queries as Queries<KeyValue>, connectorId) as JSX.Element;

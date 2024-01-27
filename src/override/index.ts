@@ -11,12 +11,14 @@ type Matcher = ReturnType<typeof matcher>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type KeyValue<Value = any> = { [key: string]: Value };
 
-export type OverrideFn<D = KeyValue> = (data: D) => KeyValue | CustomModel | CustomAttach | CustomQuery | CustomEach;
+export type OverrideFn<D = KeyValue> = (
+  data: D
+) => (() => KeyValue) | CustomModel | CustomAttach | CustomQuery | CustomEach;
 
 export type ModelKey = string | [string, ModelKeyFn?];
 export type ModelKeyFn = (p: KeyValue) => string;
 export type ModelValueFn<E = ChangeEvent> = (e: E) => string | number | boolean;
-type DataKeyFn = string[] | ((data: KeyValue) => KeyValue);
+type DataKeyFn = string[] | ((data: KeyValue) => () => KeyValue);
 
 export type CustomModel = ['model', string, [string, ModelKeyFn] | ModelKeyFn, ModelValueFn, string, string];
 export type CustomPass = ['pass', string, string[] | true, string[]];
@@ -25,7 +27,7 @@ export type CustomQuery = ['query', string, Queries<KeyValue>];
 export type CustomEach<D = KeyValue> = [
   'each',
   string,
-  (data: D) => Array<false | KeyValue | CustomModel | CustomQuery | CustomAttach>,
+  (data: D) => () => Array<false | KeyValue | CustomModel | CustomQuery | CustomAttach>,
 ];
 
 export type Custom = CustomModel | CustomPass | CustomAttach | CustomQuery | CustomEach;

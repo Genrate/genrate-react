@@ -2,6 +2,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { store } from './store';
 import { get_value } from '../utils';
 import { OverrideStore } from '../override/override';
+import { KeyValue } from '../override';
 
 export const Store: OverrideStore = {
   useInit: (connectorId, data) => {
@@ -31,7 +32,20 @@ export const Store: OverrideStore = {
       };
     }, [subKeys, exceptKeys]);
 
-    return store.data[connectorId];
+    const state: KeyValue = {};
+    const storeData = store.data[connectorId];
+
+    const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : subKeys;
+
+    if (keys?.length) {
+      for (const key of keys) {
+        if (storeData[key]) {
+          state[key] = storeData[key];
+        }
+      }
+    }
+
+    return state;
   },
 
   useModel: (connectorId, key) => {

@@ -26,7 +26,7 @@ export const GenRateQuery = React.memo((props: GenRateQueryProps) => {
   return view(node, queries);
 });
 
-export const GenRateOverride = React.memo((props: OverrideProps) => {
+export const GenRateOverride = React.memo((props: OverrideProps): JSX.Element => {
   const { connectorId, id } = props;
   const store = Override.getStore();
   const overrideData = Override.get(connectorId, id);
@@ -146,7 +146,7 @@ export const GenRateOverride = React.memo((props: OverrideProps) => {
       i++;
     }
 
-    return components;
+    return <>{components}</>;
   }
 
   if (typeof EComponent == 'function') {
@@ -161,6 +161,10 @@ export function genrate(props: OverrideProps) {
   return <GenRateOverride {...props} />;
 }
 
-export function rebuild(Component: JSXElementConstructor<KeyValue>, props: KeyValue, children?: React.ReactElement) {
+export function rebuild<Props = KeyValue>(
+  Component: JSXElementConstructor<Props>,
+  props: Props,
+  children?: React.ReactElement
+) {
   return <Component {...props}>{children}</Component>;
 }

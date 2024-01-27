@@ -104,7 +104,7 @@ export const SignIn = (
     // Add on click event to button
     'Button[type=submit]':
     // subscribe to specific data
-    ({ email, password }) => ({ 
+    ({ email, password }) => () => ({ 
       onClick: () => {
         onSubmit({ email, password, remember })
       }
@@ -128,11 +128,13 @@ export default function () {
     // search inside an element and apply data changes
     Input: query({
       TextField: model(),
-      Button: ({ email }) => console.log('email')
+      Button: ({ email }) => () => ({ 
+        onClick: () => console.log('email') 
+      })
     })
 
     // Iterator
-    Input: each(({ list }) => list.map((l, i) => {
+    Input: each(({ list }) => () => list.map((l, i) => {
 
       if (l == 1) {
         // query iterated element
