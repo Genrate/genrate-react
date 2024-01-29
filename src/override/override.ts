@@ -30,7 +30,12 @@ type StoreOverrideMap = KeyValue<StoreOverride>;
 
 export interface OverrideStore {
   useInit: (connectorId: string, data: KeyValue) => [value: KeyValue, set: (key: string, value: unknown) => void];
-  useData: (connectorId: string, subKeys?: string[], except?: string[]) => KeyValue;
+  useData: (
+    connectorId: string,
+    propKeys: string[],
+    subKeys?: string[],
+    except?: string[]
+  ) => [props: KeyValue, state: KeyValue];
   useModel: (containerId: string, key?: string) => [value: unknown, set: (value: unknown) => void];
 }
 

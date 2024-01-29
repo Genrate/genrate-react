@@ -10,23 +10,33 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
   let overrideItems: Array<false | KeyValue | CustomAttach | CustomQuery> = [];
   const overrideCustom: CustomOverride = {};
 
-  const keyMap: KeyValue<boolean> = {};
+  const keyMap: KeyValue<true> = {};
+  const propKeyMap: KeyValue<true> = {};
   if (custom.passes?.length) {
     for (const pass of custom.passes) {
       const [, , fields, except] = pass;
       if (typeof fields == 'boolean') {
         exceptKeys = except;
       } else {
-        fields.map((f) => (keyMap[f] = true));
+        fields.map((f) => {
+          keyMap[f] = true;
+          propKeyMap[f] = true;
+        });
       }
     }
   }
 
-  let itemsFn: CustomEach[2];
+  let itemsFn: CustomEach[2] | undefined;
   if (override || custom) {
     const proxy = get_used_keys({}, (prop) => (keyMap[prop] = true));
 
-    override?.forEach((fn) => fn(proxy));
+    override?.forEach((fn) => {
+      try {
+        fn(proxy);
+      } catch (e) {
+        // ignore fn error this is only for retrieving keys
+      }
+    });
 
     const main = overrideCustom?.main ?? custom?.main;
 
@@ -35,6 +45,7 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
       if (Array.isArray(attachProps)) {
         attachProps.map((p) => {
           keyMap[p] = true;
+          propKeyMap[p] = true;
         });
       } else {
         attachProps(proxy);
@@ -48,9 +59,9 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
     }
   }
 
-  const state = store.useData(connectorId, Object.keys(keyMap), exceptKeys);
+  const [props, state] = store.useData(connectorId, Object.keys(propKeyMap), Object.keys(keyMap), exceptKeys);
 
-  let overrideProps: KeyValue = state;
+  let overrideProps: KeyValue = props;
 
   for (const fn of override) {
     const result = fn(state);

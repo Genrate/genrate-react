@@ -31,9 +31,9 @@ interface ConnectorInitProps extends KeyValue {
 const ConnectorInit = React.memo((props: ConnectorInitProps) => {
   const { layout, keys, queries, connectorId } = props;
   const store = Override.getStore();
-  const state = store.useData(connectorId, keys);
+  const [data] = store.useData(connectorId, keys, keys);
 
-  return override(layout(state), queries as Queries<KeyValue>, connectorId) as JSX.Element;
+  return override(layout(data), queries as Queries<KeyValue>, connectorId) as JSX.Element;
 });
 
 export function useConnectorCore<

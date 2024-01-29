@@ -281,7 +281,6 @@ describe('index', () => {
     });
 
     it('should render the override component', () => {
-      console.log('override stars');
       const { container } = render(<TestOverride />);
 
       expect(container.querySelector('span[test]')).toBeTruthy();
@@ -340,7 +339,6 @@ describe('index', () => {
     });
 
     it('should render and apply each data', () => {
-      console.log('apply each data starts');
       const { container } = render(<TestEach />);
 
       const button = container.querySelector('button');

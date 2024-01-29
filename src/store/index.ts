@@ -13,7 +13,7 @@ export const Store: OverrideStore = {
     return [store.data[connectorId] || {}, (key, value) => store.set(connectorId, key, value)];
   },
 
-  useData: (connectorId, subKeys, exceptKeys) => {
+  useData: (connectorId, propKeys, subKeys, exceptKeys) => {
     const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
     useEffect(() => {
@@ -33,6 +33,7 @@ export const Store: OverrideStore = {
     }, [subKeys, exceptKeys]);
 
     const state: KeyValue = {};
+    const props: KeyValue = {};
     const storeData = store.data[connectorId];
 
     const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : subKeys;
@@ -41,11 +42,14 @@ export const Store: OverrideStore = {
       for (const key of keys) {
         if (storeData[key]) {
           state[key] = storeData[key];
+          if (exceptKeys !== undefined || propKeys.indexOf(key) > -1) {
+            props[key] = state[key];
+          }
         }
       }
     }
 
-    return state;
+    return [props, store.data[connectorId]];
   },
 
   useModel: (connectorId, key) => {
