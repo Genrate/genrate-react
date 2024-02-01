@@ -107,11 +107,18 @@ export function useConnectorCore<
   function view(layout: (data: KeyValue) => JSX.Element, queries: Queries<Data>) {
     const keys: string[] = [];
 
-    const props = get_used_keys(state, (key) => keys.push(key));
+    const props = get_used_keys({ key: id, ...state }, (key) => keys.push(key));
     const node = layout(props);
 
     if (keys.length) {
-      return rebuild(ConnectorInit, { node, layout, keys, queries: queries as Queries<KeyValue>, connectorId });
+      return rebuild(ConnectorInit, {
+        key: id,
+        node,
+        layout,
+        keys,
+        queries: queries as Queries<KeyValue>,
+        connectorId,
+      });
     }
 
     return override(node, queries as Queries<KeyValue>, connectorId) as JSX.Element;

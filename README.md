@@ -2,7 +2,7 @@
 
 [![npm package][npm-img]][npm-url] [![Build Status][build-img]][build-url] [![Downloads][downloads-img]][downloads-url] [![Issues][issues-img]][issues-url] [![codecov][codecov-img]][codecov-url] [![Commitizen Friendly][commitizen-img]][commitizen-url] [![Semantic Release][semantic-release-img]][semantic-release-url]
 
-> GenRate React package aims to organize, expand, more plexibility on building and coding web application 
+> GenRate React package aims to organize, expand, add more plexibility on building react web application 
 
 ## Install
 
@@ -13,7 +13,7 @@ npm install @genrate/react
 ## Usage
 
 ### Design
-```ts
+```tsx
 /**
  * Output
  */
@@ -75,16 +75,16 @@ export const Main = () => (
 import { useConnector } from '@genrate/react';
 
 interface Data {
-  email: string,
+  email: string;
   password: string;
-}
+};
 
 /**
  * Input Component
  */
-export const SignIn = (
+export const SignIn = ({
   onSubmit = (data: Data) => console.log('test', data)
-) => {
+}) => {
 
   const { view, model, pass, attach } = useConnector<Data>();
 
@@ -96,19 +96,20 @@ export const SignIn = (
     'Box TextField[name=password]': model('password'), // auto binding of input
 
     // prop level model auto binding
-    'FormControlLabel[control]': model(['control'], (e) => e.target.checked)
+    'FormControlLabel[control]': model(['control'], (e) => e.target.checked),
 
     // dynamic auto binding base state data
     TextField: ({ input }) => input == 'yes' ? model('input2') : model('input'), 
 
     // Add on click event to button
     'Button[type=submit]':
-    // subscribe to specific data
-    ({ email, password }) => () => ({ 
-      onClick: () => {
-        onSubmit({ email, password, remember })
-      }
-    }),
+      // subscribe to specific data
+      ({ email, password }) => 
+      () => ({ 
+        onClick: () => {
+          onSubmit({ email, password, remember })
+        }
+      }),
   })
 }
 
@@ -116,7 +117,7 @@ export const SignIn = (
  * Main Component
  */
 export default function () {
-  const { view, attach, set, pass, query, each } = useConnector({ list: [1,2,3], input: [] })
+  const { view, attach, set, pass, query, each } = useConnector({ list: [1,2,3], input: [] });
 
   return view(Main, {
     // Attach othe component and set prop 
@@ -128,25 +129,30 @@ export default function () {
     // search inside an element and apply data changes
     Input: query({
       TextField: model(),
-      Button: ({ email }) => () => ({ 
-        onClick: () => console.log('email') 
-      })
-    })
+      Button: 
+        ({ email }) => 
+        () => ({ 
+          onClick: () => console.log('email') 
+        })
+    }),
 
     // Iterator
-    Input: each(({ list }) => () => list.map((l, i) => {
+    Input: each(
+      ({ list }) => 
+      () => list.map((l, i) => {
 
-      if (l == 1) {
-        // query iterated element
-        return query({
-          // array model value
-          TextField: model(`input.${i}`)
-        })
-      } 
+        if (l == 1) {
+          // query iterated element
+          return query({
+            // array model value
+            TextField: model(`input.${i}`)
+          })
+        } 
 
-      // iterated element props 
-      return ({ test: 'value' })
-    }))
+        // iterated element props 
+        return ({ test: 'value' })
+      })
+    ),
 
 
     // pass data to other component 

@@ -1,6 +1,6 @@
 {
   "name": "@genrate/react",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "React tools to organize resource and add more plexibility in coding and building react apps",
   "main": "./lib/src/index.js",
   "types": "./lib/src/index.d.ts",

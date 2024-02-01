@@ -16,13 +16,12 @@ interface OverrideProps {
 interface GenRateQueryProps {
   node: (p: KeyValue) => JSX.Element;
   queries: Queries<KeyValue>;
-  data: KeyValue;
   connectorId: string;
 }
 
-export const GenRateQuery = React.memo((props: GenRateQueryProps) => {
-  const { node, queries, data, connectorId } = props;
-  const { view } = useConnectorCore(data, connectorId);
+const GenRateQuery = React.memo((props: GenRateQueryProps) => {
+  const { node, queries, connectorId } = props;
+  const { view } = useConnectorCore(undefined, connectorId);
   return view(node, queries);
 });
 
@@ -92,7 +91,6 @@ export const GenRateOverride = React.memo((props: OverrideProps): JSX.Element =>
     const QProps = {
       node: EComponent as (p: KeyValue) => JSX.Element,
       queries,
-      data: proxy,
       connectorId: queryStoreId,
     };
 
