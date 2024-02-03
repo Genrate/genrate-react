@@ -1,10 +1,8 @@
 import { CustomAttach, OverrideFn, KeyValue, CustomQuery, CustomOverride, CustomEach, CustomModel } from '../override';
-import { Override } from '../override/override';
 import { get_used_keys } from '../utils';
+import { useData } from './useData';
 
 export function useOverrideProps(override: OverrideFn[], custom: CustomOverride, connectorId: string) {
-  const store = Override.getStore();
-
   let exceptKeys: string[] | undefined;
 
   let overrideItems: Array<false | KeyValue | CustomAttach | CustomQuery> = [];
@@ -59,7 +57,7 @@ export function useOverrideProps(override: OverrideFn[], custom: CustomOverride,
     }
   }
 
-  const [props, state] = store.useData(connectorId, Object.keys(propKeyMap), Object.keys(keyMap), exceptKeys);
+  const [props, state] = useData(connectorId, Object.keys(propKeyMap), Object.keys(keyMap), exceptKeys);
 
   let overrideProps: KeyValue = props;
 

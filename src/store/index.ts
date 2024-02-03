@@ -13,7 +13,7 @@ export const Store: OverrideStore = {
     return [store.data[connectorId] || {}, (key, value) => store.set(connectorId, key, value)];
   },
 
-  useData: (connectorId, propKeys, subKeys, exceptKeys) => {
+  useState: (connectorId, stateKeys, exceptKeys) => {
     const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
     useEffect(() => {
@@ -23,18 +23,46 @@ export const Store: OverrideStore = {
         });
       }
 
-      if (!subKeys?.length) return;
+      if (!stateKeys?.length) return;
 
-      const subs = subKeys?.map((key) => store.subscribe(connectorId, key, () => forceUpdate()));
+      const subs = stateKeys?.map((key) => store.subscribe(connectorId, key, () => forceUpdate()));
 
       return () => {
         subs?.map((sub) => sub.unsubscribed());
       };
-    }, [subKeys, exceptKeys]);
+    }, [stateKeys, exceptKeys]);
 
     const state: KeyValue = {};
-    const props: KeyValue = {};
     const storeData = store.data[connectorId];
+
+    const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : stateKeys;
+
+    if (keys?.length) {
+      for (const key of keys) {
+        if (storeData[key]) {
+          state[key] = storeData[key];
+        }
+      }
+    }
+
+    return state;
+  },
+
+  useHooks: (connectorId, subKeys, exceptKeys) => {
+    const [, forceUpdate] = useReducer((x) => x + 1, 0);
+
+    useEffect(() => {
+      if (!subKeys?.length) return;
+
+      const subs = subKeys?.map((key) => store.subscribe(`${connectorId}:hooks`, key, () => forceUpdate()));
+
+      return () => {
+        subs?.map((sub) => sub.unsubscribed());
+      };
+    }, [subKeys]);
+
+    const state: KeyValue = {};
+    const storeData = store.data[`${connectorId}:hooks`];
 
     const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : subKeys;
 
@@ -42,14 +70,11 @@ export const Store: OverrideStore = {
       for (const key of keys) {
         if (storeData[key]) {
           state[key] = storeData[key];
-          if (exceptKeys !== undefined || propKeys.indexOf(key) > -1) {
-            props[key] = state[key];
-          }
         }
       }
     }
 
-    return [props, store.data[connectorId]];
+    return state;
   },
 
   useModel: (connectorId, key) => {
@@ -70,6 +95,15 @@ export const Store: OverrideStore = {
             store.set(connectorId, key, value);
           }
         }
+      },
+    ];
+  },
+
+  useHooksInit: (connectorId: string) => {
+    return [
+      store.data[connectorId],
+      (key: string, value: unknown) => {
+        store.set(`${connectorId}:hooks`, key, value);
       },
     ];
   },

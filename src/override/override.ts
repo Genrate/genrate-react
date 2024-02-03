@@ -1,6 +1,7 @@
 import { ReactElement, isValidElement } from 'react';
-import { CustomModel, CustomOverride, KeyValue, ModelValueFn, OverrideFn } from '.';
-import { ElementType } from './component';
+import type { CustomModel, CustomOverride, KeyValue, ModelValueFn, OverrideFn } from '.';
+import type { ElementType } from './component';
+import type { SplitKeyResult, UnionToIntersection } from '../utils';
 
 export interface OverrideModel {
   id: string;
@@ -28,15 +29,29 @@ export interface OverrideData {
 type StoreOverride = KeyValue<OverrideData>;
 type StoreOverrideMap = KeyValue<StoreOverride>;
 
+export type HookFn<D extends KeyValue<unknown>, R = unknown> = (data: D) => R;
+type HookOverride = KeyValue<HookFn<KeyValue<unknown>>> & { $$keyMap: Record<string, true> };
+type HookOverrideMap = KeyValue<HookOverride>;
+
+type HookFnResultArray<H extends KeyValue<HookFn<KeyValue<unknown>>>> = {
+  [K in keyof H]: K extends string
+    ? ReturnType<H[K]> extends readonly unknown[] | unknown[]
+      ? SplitKeyResult<K, ReturnType<H[K]>>
+      : Record<K, ReturnType<H[K]>>
+    : never;
+};
+
+export type HookFnResults<
+  H extends KeyValue<HookFn<KeyValue<unknown>>>,
+  A = HookFnResultArray<H>,
+> = UnionToIntersection<A[keyof A]>;
+
 export interface OverrideStore {
   useInit: (connectorId: string, data: KeyValue) => [value: KeyValue, set: (key: string, value: unknown) => void];
-  useData: (
-    connectorId: string,
-    propKeys: string[],
-    subKeys?: string[],
-    except?: string[]
-  ) => [props: KeyValue, state: KeyValue];
+  useState: (connectorId: string, keys?: string[], except?: string[]) => KeyValue;
+  useHooks: (connectorId: string, keys?: string[], except?: string[]) => KeyValue;
   useModel: (containerId: string, key?: string) => [value: unknown, set: (value: unknown) => void];
+  useHooksInit: (connectorId: string) => [state: KeyValue, set: (key: string, value: unknown) => void];
 }
 
 const $Override = {
@@ -44,6 +59,11 @@ const $Override = {
    * Data
    */
   data: {} as StoreOverrideMap,
+
+  /**
+   * Hooks
+   */
+  hooks: {} as HookOverrideMap,
 
   /**
    * Store
@@ -65,8 +85,28 @@ export const Override = {
     delete $Override.data[id];
   },
 
+  setHooks(id: string, hooks: HookOverride) {
+    $Override.hooks[id] = hooks;
+  },
+
+  getHooks(id: string) {
+    return $Override.hooks[id] ?? {};
+  },
+
+  useHook(id: string, key: string, state: KeyValue) {
+    return $Override.hooks[id][key](state);
+  },
+
+  isHook(id: string, key: string) {
+    return $Override.hooks[id]?.[key] ? true : false;
+  },
+
   setStore(store: OverrideStore) {
     $Override.store = store;
+  },
+
+  extendStore(store: Partial<OverrideStore>) {
+    $Override.store = { ...$Override.store, ...store };
   },
 
   getStore() {

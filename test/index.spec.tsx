@@ -60,7 +60,9 @@ const TestComponent = ({ test = 1 }) => {
 };
 
 const TestModelPass = () => {
-  const { view, model, pass, set } = useConnector({ sample: 'sample', test: '', list: [1, 2] });
+  const { view, model, pass, set } = useConnector({
+    state: { sample: 'sample', test: '', list: [1, 2] }
+  });
 
   return view(TestInput, {
     'input[type=text][name]': model('test'),
@@ -86,7 +88,9 @@ const TestModelPass2 = () => {
 };
 
 const TestFailedPass = () => {
-  const { view, pass } = useConnector({ test: '1' });
+  const { view, pass } = useConnector({
+    state: { test: '1' }
+  });
 
   return view(TestInput, {
     TestOutput: pass(),
@@ -119,7 +123,7 @@ const TestOverride = () => {
 };
 
 const TestOverride2 = () => {
-  const { view } = useConnector({ test: 2 });
+  const { view } = useConnector({ state: { test: 2 } });
 
   return view(TestLayout, {
     div: <TestComponent test={222} />,
@@ -127,7 +131,7 @@ const TestOverride2 = () => {
 };
 
 const TestOverride3 = () => {
-  const { view, attach } = useConnector({ test: 2 });
+  const { view, attach } = useConnector({ state: { test: 2 } });
 
   return view(TestLayout, {
     div: attach(TestComponent, ['test']),
@@ -137,7 +141,7 @@ const TestOverride3 = () => {
 const Div = <div />;
 
 const TestFailedAttach = () => {
-  const { view, attach } = useConnector({ test: 2 });
+  const { view, attach } = useConnector({ state: { test: 2 } });
 
   return view(TestLayout, {
     div: attach(Div.type, ['test']),
@@ -145,7 +149,7 @@ const TestFailedAttach = () => {
 };
 
 const TestModelSelector = () => {
-  const { view, model, pass } = useConnector({ sample: 'test' });
+  const { view, model, pass } = useConnector({ state: { sample: 'test' } });
 
   return view(TestInput, {
     'div input[name="sample"]': model(),
@@ -172,7 +176,7 @@ const TestQuery = () => {
 };
 
 const TestEach = () => {
-  const { view, each, query } = useConnector({ data: [1, 2, 3] });
+  const { view, each, query } = useConnector({ state: { data: [1, 2, 3] } });
 
   return view(TestOutput2, {
     TestOutput: each(
@@ -191,7 +195,7 @@ const TestEach = () => {
 };
 
 const TestEachModel = () => {
-  const { view, each, model } = useConnector({ data: [1, 2, 3], input: [] });
+  const { view, each, model } = useConnector({ state: { data: [1, 2, 3], input: [] } });
 
   return view(TestInput, {
     input: each(
@@ -206,7 +210,7 @@ const TestEachModel = () => {
 };
 
 const TestEachQueryModel = () => {
-  const { view, each, query, model } = useConnector({ data: [1, 2, 3], input: [] });
+  const { view, each, query, model } = useConnector({ state: { data: [1, 2, 3], input: [] } });
 
   return view(TestOutput3, {
     TestInput: each(
