@@ -62,13 +62,13 @@ export const Store: OverrideStore = {
     }, [subKeys]);
 
     const state: KeyValue = {};
-    const storeData = store.data[`${connectorId}:hooks`];
+    const storeData = store.data[`${connectorId}:hooks`] ?? {};
 
     const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : subKeys;
 
     if (keys?.length) {
       for (const key of keys) {
-        if (storeData[key]) {
+        if (storeData[key] !== undefined) {
           state[key] = storeData[key];
         }
       }
@@ -100,6 +100,10 @@ export const Store: OverrideStore = {
   },
 
   useHooksInit: (connectorId: string) => {
+    if (!store.data[`${connectorId}:hooks`]) {
+      store.init(`${connectorId}:hooks`, {});
+    }
+
     return [
       store.data[connectorId],
       (key: string, value: unknown) => {

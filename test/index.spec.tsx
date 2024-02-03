@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { ChangeEvent, useState } from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { useConnector } from '../src';
 
@@ -61,10 +61,11 @@ const TestComponent = ({ test = 1 }) => {
 
 const TestModelPass = () => {
   const { view, model, pass, set } = useConnector({
-    state: { sample: 'sample', test: '', list: [1, 2] }
+    state: { sample: 'sample', test: '', list: [1, 2] },
   });
 
   return view(TestInput, {
+    input: model('test2'),
     'input[type=text][name]': model('test'),
     'button[type][type~=submit]':
       ({ test }) =>
@@ -89,7 +90,7 @@ const TestModelPass2 = () => {
 
 const TestFailedPass = () => {
   const { view, pass } = useConnector({
-    state: { test: '1' }
+    state: { test: '1' },
   });
 
   return view(TestInput, {
@@ -233,6 +234,26 @@ const TestConditionalModel = () => {
     TestOutput:
       ({ input, input1 }) =>
       () => ({ test: `${input}${input1 || ''}` }),
+  });
+};
+
+const TestHooks = () => {
+  const { view } = useConnector({
+    hooks: {
+      'input|setInput': () => useState(''),
+    },
+  });
+
+  return view(TestInput, {
+    input:
+      ({ input, setInput }) =>
+      () => ({
+        value: input,
+        onChange: (e: ChangeEvent<{ value: string }>) => setInput(e.target.value),
+      }),
+    TestOutput:
+      ({ input }) =>
+      () => ({ test: input }),
   });
 };
 
@@ -381,21 +402,31 @@ describe('index', () => {
       expect(container.querySelector('span[id="3"]')).toHaveTextContent('["Y","E","S"]');
     });
 
-    it('should render and apply conditional model', async () => {
+    it('should render and apply conditional model', () => {
       const { container } = render(<TestConditionalModel />);
 
-      const input = container.querySelector('input[name="input"');
+      const input = container.querySelector('input[name="input"]');
 
       if (input) fireEvent.change(input, { target: { value: 'yes' } });
 
       expect(container.querySelector('span[id="1"]')).toHaveTextContent('yes');
 
-      await new Promise((r) => setTimeout(r, 500));
-      const input1 = container.querySelector('input[name="input1"');
+      const input1 = container.querySelector('input[name="input1"]');
 
       if (input1) fireEvent.change(input1, { target: { value: 'no' } });
 
       expect(container.querySelector('span[id="1"]')).toHaveTextContent('yesno');
+    });
+
+    it('should render and apply hooks', () => {
+      const { container } = render(<TestHooks />);
+
+      const input = container.querySelector('input');
+      expect(container.querySelector('span')).toHaveTextContent('');
+
+      if (input) fireEvent.change(input, { target: { value: 'hello' } });
+
+      expect(container.querySelector('span')).toHaveTextContent('hello');
     });
   });
 });
