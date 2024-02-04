@@ -2,6 +2,7 @@ import { ReactElement, isValidElement } from 'react';
 import type { CustomModel, CustomOverride, KeyValue, ModelValueFn, OverrideFn } from '.';
 import type { ElementType } from './component';
 import type { SplitKeyResult, UnionToIntersection } from '../utils';
+import { Store } from '../store';
 
 export interface OverrideModel {
   id: string;
@@ -69,7 +70,7 @@ const $Override = {
   /**
    * Store
    */
-  store: {} as OverrideStore,
+  store: Store,
 };
 
 export const Override = {
@@ -104,10 +105,6 @@ export const Override = {
 
   setStore(store: OverrideStore) {
     $Override.store = store;
-  },
-
-  extendStore(store: Partial<OverrideStore>) {
-    $Override.store = { ...$Override.store, ...store };
   },
 
   getStore() {

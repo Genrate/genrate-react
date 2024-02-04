@@ -15,14 +15,13 @@ export type Node = ReactNode & {
 
 export type PopFirst<T> = T extends readonly [unknown, ...infer U] | [unknown, ...infer U] ? U : never;
 
-export type SplitKeyResult<
-  K extends string,
-  R extends readonly unknown[] | unknown[],
-> = K extends `${infer T}|${infer U}`
-  ? Record<T, R[0]> & SplitKeyResult<U, PopFirst<R>>
-  : R extends readonly unknown[] | unknown[]
-    ? Record<K, R[0]>
-    : Record<K, R>;
+export type SplitKeyResult<K extends string, R = readonly unknown[] | unknown[]> = R extends
+  | readonly unknown[]
+  | unknown[]
+  ? K extends `${infer T}|${infer U}`
+    ? Record<T, R[0]> & SplitKeyResult<U, PopFirst<R>>
+    : Record<K, R[0]>
+  : Record<K, R>;
 
 export type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (k: infer I) => void
   ? I

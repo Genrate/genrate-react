@@ -48,8 +48,9 @@ type Input<S, H> = {
 
 export function useConnectorCore<
   State extends KeyValue<unknown>,
-  Hooks extends KeyValue<HookFn<State>>,
-  Data extends KeyValue<unknown> = State & HookFnResults<State, Hooks>,
+  HookState extends KeyValue = State,
+  Hooks extends KeyValue = KeyValue<HookFn<HookState>>,
+  Data extends KeyValue<unknown> = HookState & HookFnResults<HookState, Hooks>,
   M extends KeyValue<unknown> = KeyValue,
 >(input?: Input<State, Hooks>, parentId?: string, options?: ConnectorOptions<M>) {
   const id = useId();
@@ -174,8 +175,10 @@ export function useConnectorCore<
   };
 }
 
-export function useConnector<State extends KeyValue, Hooks extends KeyValue<HookFn<State>>>(
-  data?: Input<State, Hooks>
-) {
-  return useConnectorCore(data);
+export function useConnector<
+  State extends KeyValue,
+  HookState extends KeyValue = State,
+  Hooks extends KeyValue = KeyValue<HookFn<HookState>>,
+>(data?: Input<State, Hooks>) {
+  return useConnectorCore<State, HookState, Hooks>(data);
 }

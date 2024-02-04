@@ -247,10 +247,13 @@ const TestHooks = () => {
   return view(TestInput, {
     input:
       ({ input, setInput }) =>
-      () => ({
-        value: input,
-        onChange: (e: ChangeEvent<{ value: string }>) => setInput(e.target.value),
-      }),
+      () => {
+        console.log('render');
+        return ({
+          value: input,
+          onChange: (e: ChangeEvent<{ value: string }>) => setInput(e.target.value),
+        })
+      },
     TestOutput:
       ({ input }) =>
       () => ({ test: input }),

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { KeyValue } from '../override';
 import { Override } from '../override/override';
 
@@ -15,7 +15,7 @@ const useOverrideHook = (connId: string, key: string, state: KeyValue, setHook: 
     }
   }
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (key.indexOf('|') > -1 && Array.isArray(result)) {
       key.split('|').forEach((k, i) => setHook(k, result[i]));
     } else {
