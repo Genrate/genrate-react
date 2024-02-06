@@ -117,22 +117,30 @@ export const SignIn = ({
  * Main Component
  */
 export default function () {
-  const { view, attach, set, pass, query, each } = useConnector({ list: [1,2,3], input: [] });
+  const { view, attach, set, pass, query, each } = useConnector(
+    // state
+    state: { list: [1,2,3], input: [] },
+
+    // bind react hooks
+    hooks: {
+      'login|isLoggedIn' => useAuth()
+    }
+  );
 
   return view(Main, {
     // Attach othe component and set prop 
     Input: attach(SignIn, { 
-            // receive data from other component
-            onSubmit: (data) => set('user', data)
-          }),
+      // receive data from other component
+      onSubmit: (data) => set('user', data)
+    }),
 
     // search inside an element and apply data changes
     Input: query({
       TextField: model(),
       Button: 
-        ({ email }) => 
+        ({ email, login, isLoggedIn }) => 
         () => ({ 
-          onClick: () => console.log('email') 
+          onClick: () => isLoggedIn ? logout(email) : login(email)
         })
     }),
 

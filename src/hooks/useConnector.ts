@@ -1,4 +1,4 @@
-import React, { useEffect, useId } from 'react';
+import React, { useId, useEffect, useMemo } from 'react';
 import {
   KeyValue,
   CustomModel,
@@ -13,8 +13,10 @@ import {
   CustomEach,
 } from '../override';
 import { get_used_keys } from '../utils';
-import { Override } from '../override/override';
-import { rebuild } from '../override/component';
+import { HookFnMap, HookFnResults, Override } from '../override/override';
+import { fragment, rebuild } from '../override/component';
+import { useData } from './useData';
+import { useOverrideHooks } from './useHooks';
 
 interface ConnectorOptions<M extends KeyValue<unknown>> {
   useExtendOverrideMethods?: (connectorId: string, state: KeyValue) => M;
@@ -24,32 +26,63 @@ interface ConnectorInitProps extends KeyValue {
   connectorId: string;
   queries: Queries<KeyValue>;
   layout: (data: KeyValue) => JSX.Element;
-  node: JSX.Element;
   keys: string[];
 }
 
 const ConnectorInit = React.memo((props: ConnectorInitProps) => {
   const { layout, keys, queries, connectorId } = props;
-  const store = Override.getStore();
-  const [data] = store.useData(connectorId, keys, keys);
+  const [data] = useData(connectorId, keys, keys);
 
-  return override(layout(data), queries as Queries<KeyValue>, connectorId) as JSX.Element;
+  const node = useMemo(
+    () => override(layout(data), queries as Queries<KeyValue>, connectorId) as JSX.Element,
+    keys.map((k) => JSON.stringify(data[k]))
+  );
+
+  return node;
 });
 
+export const ConnectorHooks = React.memo<{ id: string }>(({ id }) => {
+  useOverrideHooks(id);
+  return null;
+});
+
+type Input<S, H> = {
+  state?: S;
+  hooks?: H;
+};
+
 export function useConnectorCore<
-  D extends KeyValue<unknown>,
-  Data extends KeyValue<unknown> = D,
+  State extends KeyValue<unknown>,
+  HookState extends KeyValue = State,
+  Hooks extends KeyValue = HookFnMap<HookState>,
+  Data extends KeyValue<unknown> = HookState & HookFnResults<HookState, Hooks>,
   M extends KeyValue<unknown> = KeyValue,
->(data?: Partial<D>, parentId?: string, options?: ConnectorOptions<M>) {
+>(input?: Input<State, Hooks>, parentId?: string, options?: ConnectorOptions<M>) {
   const id = useId();
   const store = Override.getStore();
   const connectorId = parentId ?? id;
 
-  const [state, setState] = store.useInit(connectorId, data ?? {});
+  const [state, setState] = store.useInit(connectorId, input?.state ?? {});
+
+  if (input?.hooks) {
+    const keys = Object.keys(input.hooks);
+    if (keys.length) {
+      const keyMap: Record<string, true> = {};
+      keys.forEach((k) => {
+        if (k.indexOf('|') > -1) {
+          k.split('|').forEach((s) => (keyMap[s] = true));
+        } else {
+          keyMap[k] = true;
+        }
+      });
+
+      Override.setHooks<State>(connectorId, { ...input.hooks, $$keyMap: keyMap });
+    }
+  }
 
   useEffect(() => () => Override.del(connectorId), []);
 
-  function set(key: keyof D, value: D[typeof key]) {
+  function set(key: keyof State, value: State[typeof key]) {
     setState(key as string, value);
   }
 
@@ -84,7 +117,7 @@ export function useConnectorCore<
     return ['pass', connectorId, keys, except];
   }
 
-  function attach<F extends (props: KeyValue) => JSX.Element | null>(
+  function attach<F extends (props: KeyValue) => JSX.Element | JSX.Element[] | null>(
     component: F,
     pass?: Array<keyof Data> | Parameters<F>[0] | ((data: Data) => Parameters<F>[0])
   ) {
@@ -108,20 +141,21 @@ export function useConnectorCore<
     const keys: string[] = [];
 
     const props = get_used_keys({ key: id, ...state }, (key) => keys.push(key));
+
     const node = layout(props);
 
-    if (keys.length) {
-      return rebuild(ConnectorInit, {
-        key: id,
-        node,
-        layout,
-        keys,
-        queries: queries as Queries<KeyValue>,
-        connectorId,
-      });
-    }
-
-    return override(node, queries as Queries<KeyValue>, connectorId) as JSX.Element;
+    return fragment([
+      rebuild(ConnectorHooks, { key: `hook-${id}`, id: connectorId }),
+      keys.length
+        ? rebuild(ConnectorInit, {
+            key: id,
+            layout,
+            keys,
+            queries: queries as Queries<KeyValue>,
+            connectorId,
+          })
+        : (override(node, queries as Queries<KeyValue>, connectorId) as JSX.Element),
+    ]);
   }
 
   const customMethods = options?.useExtendOverrideMethods?.(connectorId, state) ?? {};
@@ -146,6 +180,11 @@ export function useConnectorCore<
   };
 }
 
-export function useConnector<Data extends KeyValue>(data?: Partial<Data>) {
-  return useConnectorCore(data);
+export function useConnector<
+  State extends KeyValue,
+  HookState extends KeyValue = State,
+  Hooks extends KeyValue = HookFnMap<HookState>,
+  Data extends KeyValue<unknown> = HookState & HookFnResults<HookState, Hooks>,
+>(data?: Input<State, Hooks>) {
+  return useConnectorCore<State, HookState, Hooks, Data>(data);
 }

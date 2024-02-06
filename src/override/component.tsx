@@ -166,3 +166,7 @@ export function rebuild<Props = KeyValue>(
 ) {
   return <Component {...props}>{children}</Component>;
 }
+
+export function fragment(components: JSX.Element[]) {
+  return <>{components}</>;
+}

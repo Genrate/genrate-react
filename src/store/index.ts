@@ -13,7 +13,7 @@ export const Store: OverrideStore = {
     return [store.data[connectorId] || {}, (key, value) => store.set(connectorId, key, value)];
   },
 
-  useData: (connectorId, propKeys, subKeys, exceptKeys) => {
+  useState: (connectorId, stateKeys, exceptKeys) => {
     const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
     useEffect(() => {
@@ -23,33 +23,67 @@ export const Store: OverrideStore = {
         });
       }
 
-      if (!subKeys?.length) return;
+      if (!stateKeys?.length) return;
 
-      const subs = subKeys?.map((key) => store.subscribe(connectorId, key, () => forceUpdate()));
+      const subs = stateKeys?.map((key) => store.subscribe(connectorId, key, () => forceUpdate()));
 
       return () => {
         subs?.map((sub) => sub.unsubscribed());
       };
-    }, [subKeys, exceptKeys]);
+    }, [stateKeys, exceptKeys]);
 
     const state: KeyValue = {};
-    const props: KeyValue = {};
     const storeData = store.data[connectorId];
 
-    const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : subKeys;
+    const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : stateKeys;
 
     if (keys?.length) {
       for (const key of keys) {
         if (storeData[key]) {
           state[key] = storeData[key];
-          if (exceptKeys !== undefined || propKeys.indexOf(key) > -1) {
-            props[key] = state[key];
-          }
         }
       }
     }
 
-    return [props, store.data[connectorId]];
+    return state;
+  },
+
+  useHooks: (connectorId, keys) => {
+    const hookId = `${connectorId}--$$hooks`;
+
+    const values: KeyValue = {};
+
+    const states: KeyValue = {};
+
+    const subKeys: string[] = [];
+    if (keys) {
+      for (const key of keys) {
+        const result = store.get(hookId, key);
+
+        if (typeof result != 'function') {
+          const [data, set] = (() => useState(result))();
+          states[key] = { data, set };
+          subKeys.push(key);
+        } else {
+          values[key] = result;
+        }
+      }
+    }
+
+    for (const key in states) {
+      values[key] = states[key]?.data;
+    }
+
+    useEffect(() => {
+      if (!subKeys?.length) return;
+      const subs = subKeys?.map((key) => store.subscribe(hookId, key, (val) => states[key]?.set(val)));
+
+      return () => {
+        subs?.map((sub) => sub.unsubscribed());
+      };
+    }, []);
+
+    return values;
   },
 
   useModel: (connectorId, key) => {
@@ -70,6 +104,20 @@ export const Store: OverrideStore = {
             store.set(connectorId, key, value);
           }
         }
+      },
+    ];
+  },
+
+  useHooksInit: (connectorId: string) => {
+    const hookId = `${connectorId}--$$hooks`;
+    if (!store.data[hookId]) {
+      store.init(hookId, {});
+    }
+
+    return [
+      store.data[connectorId],
+      (key: string, value: unknown, init: boolean = true) => {
+        store.set(hookId, key, value, { emit: !init });
       },
     ];
   },
