@@ -48,33 +48,42 @@ export const Store: OverrideStore = {
     return state;
   },
 
-  useHooks: (connectorId, subKeys, exceptKeys) => {
-    const [, forceUpdate] = useReducer((x) => x + 1, 0);
+  useHooks: (connectorId, keys) => {
+    const hookId = `${connectorId}--$$hooks`;
 
-    useEffect(() => {
-      if (!subKeys?.length) return;
+    const values: KeyValue = {};
 
-      const subs = subKeys?.map((key) => store.subscribe(`${connectorId}:hooks`, key, () => forceUpdate()));
+    const states: KeyValue = {};
 
-      return () => {
-        subs?.map((sub) => sub.unsubscribed());
-      };
-    }, [subKeys]);
-
-    const state: KeyValue = {};
-    const storeData = store.data[`${connectorId}:hooks`] ?? {};
-
-    const keys = exceptKeys !== undefined ? Object.keys(storeData).filter((k) => exceptKeys.indexOf(k) < 0) : subKeys;
-
-    if (keys?.length) {
+    const subKeys: string[] = [];
+    if (keys) {
       for (const key of keys) {
-        if (storeData[key] !== undefined) {
-          state[key] = storeData[key];
+        const result = store.get(hookId, key);
+
+        if (typeof result != 'function') {
+          const [data, set] = (() => useState(result))();
+          states[key] = { data, set };
+          subKeys.push(key);
+        } else {
+          values[key] = result;
         }
       }
     }
 
-    return state;
+    for (const key in states) {
+      values[key] = states[key]?.data;
+    }
+
+    useEffect(() => {
+      if (!subKeys?.length) return;
+      const subs = subKeys?.map((key) => store.subscribe(hookId, key, (val) => states[key]?.set(val)));
+
+      return () => {
+        subs?.map((sub) => sub.unsubscribed());
+      };
+    }, []);
+
+    return values;
   },
 
   useModel: (connectorId, key) => {
@@ -100,14 +109,15 @@ export const Store: OverrideStore = {
   },
 
   useHooksInit: (connectorId: string) => {
-    if (!store.data[`${connectorId}:hooks`]) {
-      store.init(`${connectorId}:hooks`, {});
+    const hookId = `${connectorId}--$$hooks`;
+    if (!store.data[hookId]) {
+      store.init(hookId, {});
     }
 
     return [
       store.data[connectorId],
-      (key: string, value: unknown) => {
-        store.set(`${connectorId}:hooks`, key, value);
+      (key: string, value: unknown, init: boolean = true) => {
+        store.set(hookId, key, value, { emit: !init });
       },
     ];
   },

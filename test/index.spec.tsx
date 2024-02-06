@@ -248,11 +248,10 @@ const TestHooks = () => {
     input:
       ({ input, setInput }) =>
       () => {
-        console.log('render');
-        return ({
+        return {
           value: input,
           onChange: (e: ChangeEvent<{ value: string }>) => setInput(e.target.value),
-        })
+        };
       },
     TestOutput:
       ({ input }) =>

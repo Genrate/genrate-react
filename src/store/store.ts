@@ -35,16 +35,16 @@ export const store = {
   },
 
   get(id: string, key: string) {
-    return this.data[id][key] || null;
+    return this.data[id][key];
   },
 
-  set(id: string, key: keyof KeyValue, value: KeyValue[typeof key]) {
-    if (!Object.prototype.hasOwnProperty.call(this.data[id], key)) {
+  set(id: string, key: keyof KeyValue, value: KeyValue[typeof key], options = { emit: true }) {
+    if (options.emit && !Object.prototype.hasOwnProperty.call(this.data[id], key)) {
       this.emit(id, ':new-key', key);
     }
 
     this.data[id][key] = value;
-    this.emit(id, key as string, value);
+    if (options.emit) this.emit(id, key as string, value);
   },
   del(id: string) {
     delete this.data[id];

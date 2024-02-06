@@ -30,11 +30,14 @@ export interface OverrideData {
 type StoreOverride = KeyValue<OverrideData>;
 type StoreOverrideMap = KeyValue<StoreOverride>;
 
-export type HookFn<D extends KeyValue, R = unknown> = (data: D) => R;
-type HookOverride<S extends KeyValue> = KeyValue<HookFn<S>> & { $$keyMap: Record<string, true> };
+export interface HookFnMap<D extends KeyValue> {
+  [key: string]: (data: D) => unknown;
+}
+
+type HookOverride<S extends KeyValue> = HookFnMap<S> & { $$keyMap: Record<string, true> };
 type HookOverrideMap = KeyValue<HookOverride<KeyValue>>;
 
-type HookFnResultArray<S extends KeyValue, H extends KeyValue<HookFn<S>>> = {
+type HookFnResultArray<S extends KeyValue, H extends HookFnMap<S>> = {
   [K in keyof H]: K extends string
     ? ReturnType<H[K]> extends readonly unknown[] | unknown[]
       ? SplitKeyResult<K, ReturnType<H[K]>>
@@ -44,7 +47,7 @@ type HookFnResultArray<S extends KeyValue, H extends KeyValue<HookFn<S>>> = {
 
 export type HookFnResults<
   S extends KeyValue,
-  H extends KeyValue<HookFn<S>>,
+  H extends HookFnMap<S>,
   A = HookFnResultArray<S, H>,
 > = UnionToIntersection<A[keyof A]>;
 

@@ -1,32 +1,37 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect } from 'react';
 import { KeyValue } from '../override';
 import { Override } from '../override/override';
 
-const useOverrideHook = (connId: string, key: string, state: KeyValue, setHook: <V>(key: string, value: V) => void) => {
+const useOverrideHook = (
+  connId: string,
+  key: string,
+  state: KeyValue,
+  setHook: <V>(key: string, value: V, init: boolean) => void
+) => {
   const result = Override.useHook(connId, key, state);
+  const deps = [];
 
-  const isMounted = useRef(false);
-
-  if (!isMounted.current) {
-    if (key.indexOf('|') > -1 && Array.isArray(result)) {
-      key.split('|').forEach((k, i) => setHook(k, result[i]));
-    } else {
-      setHook(key, result);
+  if (key.indexOf('|') > -1 && Array.isArray(result)) {
+    key.split('|').forEach((k, i) => {
+      if (typeof result[i] != 'function') {
+        deps.push(JSON.stringify(result[i]));
+      }
+      setHook(k, result[i], true);
+    });
+  } else {
+    if (typeof result != 'function') {
+      deps.push(JSON.stringify(result));
     }
+    setHook(key, result, true);
   }
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (key.indexOf('|') > -1 && Array.isArray(result)) {
-      key.split('|').forEach((k, i) => setHook(k, result[i]));
+      key.split('|').forEach((k, i) => setHook(k, result[i], false));
     } else {
-      setHook(key, result);
+      setHook(key, result, false);
     }
-
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, [result]);
+  }, deps);
 };
 
 export const useOverrideHooks = (connId: string) => {

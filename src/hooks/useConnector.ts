@@ -1,4 +1,4 @@
-import React, { useId, useEffect } from 'react';
+import React, { useId, useEffect, useMemo } from 'react';
 import {
   KeyValue,
   CustomModel,
@@ -13,7 +13,7 @@ import {
   CustomEach,
 } from '../override';
 import { get_used_keys } from '../utils';
-import { HookFn, HookFnResults, Override } from '../override/override';
+import { HookFnMap, HookFnResults, Override } from '../override/override';
 import { fragment, rebuild } from '../override/component';
 import { useData } from './useData';
 import { useOverrideHooks } from './useHooks';
@@ -33,7 +33,12 @@ const ConnectorInit = React.memo((props: ConnectorInitProps) => {
   const { layout, keys, queries, connectorId } = props;
   const [data] = useData(connectorId, keys, keys);
 
-  return override(layout(data), queries as Queries<KeyValue>, connectorId) as JSX.Element;
+  const node = useMemo(
+    () => override(layout(data), queries as Queries<KeyValue>, connectorId) as JSX.Element,
+    keys.map((k) => JSON.stringify(data[k]))
+  );
+
+  return node;
 });
 
 export const ConnectorHooks = React.memo<{ id: string }>(({ id }) => {
@@ -49,7 +54,7 @@ type Input<S, H> = {
 export function useConnectorCore<
   State extends KeyValue<unknown>,
   HookState extends KeyValue = State,
-  Hooks extends KeyValue = KeyValue<HookFn<HookState>>,
+  Hooks extends KeyValue = HookFnMap<HookState>,
   Data extends KeyValue<unknown> = HookState & HookFnResults<HookState, Hooks>,
   M extends KeyValue<unknown> = KeyValue,
 >(input?: Input<State, Hooks>, parentId?: string, options?: ConnectorOptions<M>) {
@@ -140,7 +145,7 @@ export function useConnectorCore<
     const node = layout(props);
 
     return fragment([
-      rebuild(ConnectorHooks, { key: `hook-${connectorId}`, id: connectorId }),
+      rebuild(ConnectorHooks, { key: `hook-${id}`, id: connectorId }),
       keys.length
         ? rebuild(ConnectorInit, {
             key: id,
@@ -178,7 +183,8 @@ export function useConnectorCore<
 export function useConnector<
   State extends KeyValue,
   HookState extends KeyValue = State,
-  Hooks extends KeyValue = KeyValue<HookFn<HookState>>,
+  Hooks extends KeyValue = HookFnMap<HookState>,
+  Data extends KeyValue<unknown> = HookState & HookFnResults<HookState, Hooks>,
 >(data?: Input<State, Hooks>) {
-  return useConnectorCore<State, HookState, Hooks>(data);
+  return useConnectorCore<State, HookState, Hooks, Data>(data);
 }
